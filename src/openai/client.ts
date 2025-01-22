@@ -1,6 +1,9 @@
 import OpenAI from 'openai';
+import { openAIConfig } from '../config/index.js';
 
 export class OpenAIClient {
+    private static instance: OpenAIClient;
+    
     private client: OpenAI;
     private model: string;
 
@@ -15,6 +18,33 @@ export class OpenAIClient {
         });
 
         this.model = model;
+    }
+
+    static getInstance(): OpenAIClient {
+        if (!OpenAIClient.instance) {
+            OpenAIClient.instance = new OpenAIClient(openAIConfig.apiKey, openAIConfig.projectId);
+        }
+        return OpenAIClient.instance;
+    }
+
+    async chat(messages:OpenAI.Chat.ChatCompletionMessageParam []): Promise<string> {
+        const params: OpenAI.Chat.ChatCompletionCreateParams = {
+            messages:  messages,
+            model: this.model,
+        };
+
+        try {
+            const chatCompletion: OpenAI.Chat.ChatCompletion = await this.client.chat.completions.create(params);
+            const responseMessage = chatCompletion.choices[0]?.message.content;
+
+            if (responseMessage) {
+                return responseMessage;
+            } else {
+                throw new Error('No response from GPT.');
+            }
+        } catch (error) {
+            throw new Error(`Error during chat completion: ${error}`);
+        }
     }
 
 
