@@ -1,0 +1,60 @@
+import OpenAI from 'openai';
+
+export class OpenAIClient {
+    private client: OpenAI;
+    private model: string;
+
+    constructor(apiKey: string, projectId?: string, model: string = 'gpt-4o') {
+        if (!apiKey) {
+            throw new Error('API key is required');
+        }
+
+        this.client = new OpenAI({
+            apiKey: apiKey,
+            project: projectId,
+        });
+
+        this.model = model;
+    }
+
+
+    async getChatCompletion(message: string): Promise<string> {
+        const params: OpenAI.Chat.ChatCompletionCreateParams = {
+            messages: [{ role: 'user', content: message }],
+            model: this.model,
+        };
+
+        try {
+            const chatCompletion: OpenAI.Chat.ChatCompletion = await this.client.chat.completions.create(params);
+            const responseMessage = chatCompletion.choices[0]?.message.content;
+
+            if (responseMessage) {
+                return responseMessage;
+            } else {
+                throw new Error('No response from GPT.');
+            }
+        } catch (error) {
+            throw new Error(`Error during chat completion: ${error}`);
+        }
+    }
+}
+
+// Usage example
+import 'dotenv/config'; // This loads variables from .env into process.env
+
+(async () => {
+  const apiKey = process.env['OPENAI_API_KEY'];
+  const projectId = process.env['OPENAI_PROJECT_ID'];
+
+  if (!apiKey) {
+    throw new Error('Environment variables OPENAI_API_KEY must be set');
+  }
+
+  const client = new OpenAIClient(apiKey, projectId);
+  try {
+    const response = await client.getChatCompletion('This is a test message');
+    console.log('GPT response:', response);
+  } catch (error) {
+    console.error(error);
+  }
+})();

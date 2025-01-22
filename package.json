@@ -15,6 +15,7 @@
   "dependencies": {
     "@autonomys/auto-drive": "^1.2.1",
     "dotenv": "^16.3.1",
+    "openai": "^4.79.4",
     "telegraf": "^4.16.3"
   },
   "devDependencies": {
