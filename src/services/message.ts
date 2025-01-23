@@ -57,7 +57,6 @@ You can ask any question with command /q.`;
             // await this.storeService.addMessage(userId, `Q: ${question}\nA: ${response}`);
             
             // provide history
-            
             let reply = `Q: ${question}\n`;
             if (msgHistory.length > 0) {
                 reply += `H: ${msgHistory.join(' \n')}\n`;

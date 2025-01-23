@@ -10,6 +10,32 @@ type Data = {
     store: Store;
 };
 
+async function asyncPool<T, R>(
+    concurrency: number,
+    items: T[],
+    fn: (item: T) => Promise<R>
+): Promise<R[]> {
+    const results: R[] = [];
+    const executing = new Set<Promise<void>>();
+
+    for (const [index, item] of items.entries()) {
+        const promise = Promise.resolve().then(() => fn(item)).then(result => {
+            results[index] = result;
+        });
+        
+        executing.add(promise);
+        const cleanup = () => executing.delete(promise);
+        promise.then(cleanup).catch(cleanup);
+
+        if (executing.size >= concurrency) {
+            await Promise.race(executing);
+        }
+    }
+
+    await Promise.all(executing);
+    return results;
+}
+
 export class StoreService {
     private static instance: StoreService;
     private autoDriveService: AutoDriveService;
@@ -17,6 +43,7 @@ export class StoreService {
     private cache: Cache = {};
     private readonly MAX_CACHE_AGE = 60 * 60 * 1000; // 1 hour
     private readonly MAX_CACHE_SIZE = 100; // per user
+    private readonly MAX_CONCURRENT_REQUESTS = 15; // 最大并发请求数
 
     private constructor() {
         this.autoDriveService = AutoDriveService.getInstance();
@@ -145,11 +172,13 @@ export class StoreService {
         const userStore = this.db.data!.store[userId];
         if (!userStore) return [];
 
-        const messages = await Promise.all(
-            userStore.messages.map(cid => this.getMessageWithCache(userId, cid))
+        const messages = await asyncPool(
+            this.MAX_CONCURRENT_REQUESTS,
+            userStore.messages,
+            cid => this.getMessageWithCache(userId, cid)
         );
 
-        return messages.filter((msg): msg is MessageData => msg !== null);
+         return messages.filter((msg): msg is MessageData => msg !== null);
     }
 
     // Optional: Add cache management methods
