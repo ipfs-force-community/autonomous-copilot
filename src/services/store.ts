@@ -2,6 +2,8 @@ import { Low } from 'lowdb';
 import { JSONFile } from 'lowdb/node';
 import { Store, Cache, MessageCache, MessageData } from '../types/index';
 import { AutoDriveService } from './auto_drive';
+import { OpenAIService } from './openai';
+import { ChromaService } from './chroma';
 import path from 'path';
 import fs from 'fs';
 
@@ -46,22 +48,35 @@ async function asyncPool<T, R>(
 export class StoreService {
     private static instance: StoreService;
     private autoDriveService: AutoDriveService;
+    private openAIService: OpenAIService;
+    private chromaService: ChromaService;
     private db: Low<Data>;
     private cache: Cache = {};
     private readonly MAX_CACHE_AGE = 60 * 60 * 1000; // 1 hour
     private readonly MAX_CACHE_SIZE = 100; // per user
     private readonly MAX_CONCURRENT_REQUESTS = 15; // 最大并发请求数
 
+    /**
+     * Private constructor to enforce singleton pattern
+     * Initializes required services and ensures data directory exists
+     */
     private constructor() {
         this.autoDriveService = AutoDriveService.getInstance();
+        this.openAIService = OpenAIService.getInstance();
+        this.chromaService = ChromaService.getInstance();
         
-        // 确保数据目录存在
+        // 确保所有数据目录存在
         const dataDir = path.join(process.cwd(), 'data');
-        if (!fs.existsSync(dataDir)) {
-            fs.mkdirSync(dataDir, { recursive: true });
-        }
+        const dbDir = path.join(dataDir, 'db');
+        const cacheDir = path.join(dataDir, 'cache');
 
-        const dbPath = path.join(dataDir, 'db.json');
+        [dataDir, dbDir, cacheDir].forEach(dir => {
+            if (!fs.existsSync(dir)) {
+                fs.mkdirSync(dir, { recursive: true });
+            }
+        });
+
+        const dbPath = path.join(dbDir, 'db.json');
         const adapter = new JSONFile<Data>(dbPath);
         this.db = new Low(adapter, { store: {} });
         this.db.read().catch(error => {
@@ -169,6 +184,7 @@ export class StoreService {
 
     /**
      * Add a new message to storage and cache
+     * Also generates and stores embedding in Chroma
      * @param userId Telegram user ID
      * @param content Message content
      * @param title Optional message title
@@ -179,7 +195,7 @@ export class StoreService {
             const messageData: MessageData = { content, title };
             
             let filename = title || `${Date.now()}`;
-            const cid = await this.autoDriveService.uploadText(JSON.stringify(messageData) , `${filename}.json`);
+            const cid = await this.autoDriveService.uploadText(JSON.stringify(messageData), `${filename}.json`);
             if (!cid) return null;
 
             await this.db.read();
@@ -188,6 +204,11 @@ export class StoreService {
             }
             this.db.data!.store[userId].messages.push(cid);
             await this.db.write();
+
+            // Generate and store embedding
+            // todo: it take too long to caculate embedding, maybe we should do it in the background
+            const embedding = await this.openAIService.generateEmbedding(content);
+            await this.chromaService.addMessage(userId, cid, embedding);
 
             this.updateCache(userId, cid, messageData);
             return cid;
@@ -228,6 +249,39 @@ export class StoreService {
     }
 
     /**
+     * Search for similar messages using vector similarity
+     * @param userId Telegram user ID
+     * @param query Search query
+     * @param limit Maximum number of results
+     * @returns Array of similar messages with their scores
+     */
+    public async searchSimilarMessages(
+        userId: number,
+        query: string,
+        limit: number = 5
+    ): Promise<Array<MessageData & { score: number }>> {
+        try {
+            const queryEmbedding = await this.openAIService.generateEmbedding(query);
+            const results = await this.chromaService.searchSimilar(userId, queryEmbedding, limit);
+            
+            let msgCid = results.map(result => result.cid);
+  
+            // Fetch message content for each result
+            const messages = await asyncPool(
+                this.MAX_CONCURRENT_REQUESTS,
+                msgCid,
+                cid => this.getMessageWithCache(userId, cid)
+            );
+            
+            // Filter out any null results and return
+            return messages.filter((msg): msg is MessageData & { score: number } => msg !== null);
+        } catch (error) {
+            console.error('Error searching similar messages:', error);
+            return [];
+        }
+    }
+
+    /**
      * Clear the cache for a specific user or all users
      * @param userId Optional Telegram user ID
      */
@@ -236,6 +290,20 @@ export class StoreService {
             delete this.cache[userId];
         } else {
             this.cache = {};
+        }
+    }
+
+    /**
+     * Clear user data from both cache and vector database
+     * @param userId Optional Telegram user ID
+     */
+    public async clearUserData(userId?: number): Promise<void> {
+        if (userId) {
+            this.clearCache(userId);
+            await this.chromaService.deleteUserMessages(userId);
+        } else {
+            this.cache = {};
+            // Clear all collections if needed
         }
     }
 

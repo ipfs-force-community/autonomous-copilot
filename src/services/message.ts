@@ -72,7 +72,12 @@ You can ask any question with command /q.`;
 
         try {
             // Get conversation history
-            const msgHistory = await this.storeService.getUserMessages(userId);
+            // const msgHistory = await this.storeService.getUserMessages(userId);
+            const similarMessages = await this.storeService.searchSimilarMessages(userId, question);
+            const msgHistory  = similarMessages.map(msg => ({
+                content: msg.content,
+                title: msg.title
+            }));
             
             // Generate AI response
             const response = await this.openAIService.generateResponse(question, msgHistory);
@@ -115,5 +120,49 @@ You can ask any question with command /q.`;
         const text = ctx.message.text;
         await this.storeService.addMessage(userId, text);
         await ctx.reply('Message stored successfully');
+    }
+
+    /**
+     * Handle the /search command for finding similar messages
+     * @param ctx Telegram context containing message and user information
+     * @throws Error if search fails
+     */
+    public async handleSearch(ctx: Context): Promise<void> {
+        if (!ctx.message || !('text' in ctx.message)) {
+            await ctx.reply('Invalid message format');
+            return;
+        }
+
+        const query = ctx.message.text.split(' ').slice(1).join(' ');
+        if (!query) {
+            await ctx.reply('Please follow the command with a search query, example: /search project updates');
+            return;
+        }
+
+        const userId = ctx.from?.id;
+        if (!userId) {
+            await ctx.reply('User ID not found');
+            return;
+        }
+
+        try {
+            const results = await this.storeService.searchSimilarMessages(userId, query);
+            
+            if (results.length === 0) {
+                await ctx.reply('No similar messages found.');
+                return;
+            }
+
+            const response = results.map((result, index) => {
+                const title = result.title ? `[${result.title}]\n` : '';
+                const score = Math.round((1 - result.score) * 100); // Convert distance to similarity percentage
+                return `${index + 1}. ${title}${result.content}\nSimilarity: ${score}%`;
+            }).join('\n\n');
+
+            await ctx.reply(`Found ${results.length} similar messages:\n\n${response}`);
+        } catch (error) {
+            console.error('Error searching messages:', error);
+            await ctx.reply('Sorry, I encountered an error while searching. Please try again later.');
+        }
     }
 }
