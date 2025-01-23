@@ -2,16 +2,28 @@ import { Context } from 'telegraf';
 import { StoreService } from './store';
 import { OpenAIService } from './openai';
 
+/**
+ * Service for handling Telegram bot message interactions
+ * Manages message processing, storage, and AI-powered responses
+ */
 export class MessageService {
     private static instance: MessageService;
     private storeService: StoreService;
     private openAIService: OpenAIService;
 
+    /**
+     * Private constructor to enforce singleton pattern
+     * Initializes required services
+     */
     private constructor() {
         this.storeService = StoreService.getInstance();
         this.openAIService = OpenAIService.getInstance();
     }
 
+    /**
+     * Returns the singleton instance of MessageService
+     * @returns MessageService instance
+     */
     public static getInstance(): MessageService {
         if (!MessageService.instance) {
             MessageService.instance = new MessageService();
@@ -19,6 +31,12 @@ export class MessageService {
         return MessageService.instance;
     }
 
+    /**
+     * Handle the /start command
+     * Sends a welcome message to the user explaining bot functionality
+     * @param ctx Telegram context containing message and user information
+     * @throws Error if message cannot be sent
+     */
     public async handleStart(ctx: Context): Promise<void> {
         const firstName = ctx.from?.first_name || 'User';
         const welcomeMessage = `Hello ${firstName}!
@@ -28,6 +46,12 @@ You can ask any question with command /q.`;
         await ctx.reply(welcomeMessage);
     }
 
+    /**
+     * Handle the /q command for asking questions
+     * Retrieves conversation history, generates AI response, and sends it back
+     * @param ctx Telegram context containing message and user information
+     * @throws Error if message processing fails
+     */
     public async handleQuestion(ctx: Context): Promise<void> {
         if (!ctx.message || !('text' in ctx.message)) {
             await ctx.reply('Invalid message format');
@@ -70,6 +94,12 @@ You can ask any question with command /q.`;
         }
     }
 
+    /**
+     * Handle regular text messages
+     * Stores the message in auto-drive and confirms storage to user
+     * @param ctx Telegram context containing message and user information
+     * @throws Error if message storage fails
+     */
     public async handleTextMessage(ctx: Context): Promise<void> {
         if (!ctx.message || !('text' in ctx.message)) {
             await ctx.reply('Invalid message format');
