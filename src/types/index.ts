@@ -1,5 +1,11 @@
+export interface MessageData {
+    content: string;
+    title?: string;
+}
+
 export interface MessageCache {
     content: string;
+    title?: string;
     lastAccessed: number;
 }
 

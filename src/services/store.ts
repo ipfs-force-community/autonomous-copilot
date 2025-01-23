@@ -1,6 +1,6 @@
 import { Low } from 'lowdb';
 import { JSONFile } from 'lowdb/node';
-import { Store, Cache, MessageCache } from '../types/index';
+import { Store, Cache, MessageCache, MessageData } from '../types/index';
 import { AutoDriveService } from './auto_drive';
 import path from 'path';
 import fs from 'fs';
@@ -51,7 +51,7 @@ export class StoreService {
         }
     }
 
-    private updateCache(userId: number, cid: string, content: string): void {
+    private updateCache(userId: number, cid: string, data: MessageData): void {
         this.initializeUserCache(userId);
         const userCache = this.cache[userId].messages;
         
@@ -73,73 +73,83 @@ export class StoreService {
         }
 
         userCache.set(cid, {
-            content,
+            content: data.content,
+            title: data.title,
             lastAccessed: Date.now()
         });
     }
 
-    private async getMessageWithCache(userId: number, cid: string): Promise<string | null> {
+    private async getMessageWithCache(userId: number, cid: string): Promise<MessageData | null> {
         const userCache = this.cache[userId]?.messages;
         const cached = userCache?.get(cid);
 
         if (cached && Date.now() - cached.lastAccessed < this.MAX_CACHE_AGE) {
             // Update last accessed time
             cached.lastAccessed = Date.now();
-            return cached.content;
+            return {
+                content: cached.content,
+                title: cached.title
+            };
         }
 
         // If not in cache or expired, fetch from storage
         try {
-            const content = await this.autoDriveService.downloadText(cid);
-            if (content) {
-                this.updateCache(userId, cid, content);
+            const data = await this.autoDriveService.downloadText(cid);
+            if (data) {
+                let messageData: MessageData;
+                try {
+                    messageData = JSON.parse(data);
+                } catch {
+                    // If the data is not JSON, treat it as plain content
+                    messageData = { content: data };
+                }
+                this.updateCache(userId, cid, messageData);
+                return messageData;
             }
-            return content;
+            return null;
         } catch (error) {
             console.error('Error fetching message:', error);
             return null;
         }
     }
 
-    public async addMessage(userId: number, text: string): Promise<string> {
-        if (!this.db.data.store[userId]) {
-            this.db.data.store[userId] = {
-                messages: []
-            };
-        }
+    public async addMessage(userId: number, content: string, title?: string): Promise<string | null> {
         try {
-            const cid = await this.autoDriveService.uploadText(text, `${userId}/${Date.now()}.txt`);
-            this.db.data.store[userId].messages.push(cid);
+            const messageData: MessageData = { content, title };
             
-            // Add to cache immediately
-            this.updateCache(userId, cid, text);
+            let filename = title || `${Date.now()}`;
+            const cid = await this.autoDriveService.uploadText(JSON.stringify(messageData) , `${filename}.json`);
+            if (!cid) return null;
+
+            await this.db.read();
+            if (!this.db.data!.store[userId]) {
+                this.db.data!.store[userId] = { messages: [] };
+            }
+            this.db.data!.store[userId].messages.push(cid);
             await this.db.write();
+
+            this.updateCache(userId, cid, messageData);
             return cid;
         } catch (error) {
-            console.error('Error storing message:', error);
-            throw error;
+            console.error('Error adding message:', error);
+            return null;
         }
     }
 
-    public async getMessage(userId: number, cid: string): Promise<string | null> {
-        const userStore = this.db.data.store[userId];
-        if (!userStore || !userStore.messages.includes(cid)) return null;
-
-        return await this.getMessageWithCache(userId, cid);
+    public async getMessage(userId: number, cid: string): Promise<MessageData | null> {
+        return this.getMessageWithCache(userId, cid);
     }
 
-    public async getUserMessages(userId: number): Promise<string[]> {
-        const userStore = this.db.data.store[userId];
+    public async getUserMessages(userId: number): Promise<MessageData[]> {
+        await this.db.read();
+        const userStore = this.db.data!.store[userId];
         if (!userStore) return [];
 
-        const messages: string[] = [];
-        for (const cid of userStore.messages) {
-            const content = await this.getMessageWithCache(userId, cid);
-            if (content) {
-                messages.push(content);
-            }
-        }
-        return messages;
+        const messages = await Promise.all(
+            userStore.messages.map(cid => this.getMessageWithCache(userId, cid))
+        );
+
+        return messages.filter((msg): msg is MessageData => msg !== null);
     }
 
     // Optional: Add cache management methods
