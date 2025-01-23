@@ -1,7 +1,7 @@
 import { Telegraf } from 'telegraf';
 import { message } from 'telegraf/filters';
-import { botConfig } from './config/index.ts';
-import { MessageService } from './services/message.ts';
+import { botConfig } from './config/index';
+import { MessageService } from './services/message';
 
 const bot = new Telegraf(botConfig.token);
 const messageService = MessageService.getInstance();

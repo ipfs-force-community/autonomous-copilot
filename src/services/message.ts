@@ -1,6 +1,6 @@
 import { Context } from 'telegraf';
-import { StoreService } from './store.ts';
-import { OpenAIService } from './openai.ts';
+import { StoreService } from './store';
+import { OpenAIService } from './openai';
 
 export class MessageService {
     private static instance: MessageService;
@@ -60,7 +60,7 @@ You can ask any question with command /q.`;
             
             let reply = `Q: ${question}\n`;
             if (msgHistory.length > 0) {
-                reply += `H: ${msgHistory.join('')}`;
+                reply += `H: ${msgHistory.join(' \n')}\n`;
             }
             reply += `\nA: ${response}`;
 
