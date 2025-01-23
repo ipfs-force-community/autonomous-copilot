@@ -27,3 +27,9 @@ export interface BotConfig {
 export interface AutoDriveConfig {
     apiKey: string;
 }
+
+export interface OpenAIConfig {
+    apiKey: string;
+    baseUrl: string;
+    projectId: string;
+}

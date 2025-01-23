@@ -1,12 +1,15 @@
 import { Context } from 'telegraf';
-import { StoreService } from './store.js';
+import { StoreService } from './store.ts';
+import { OpenAIService } from './openai.ts';
 
 export class MessageService {
     private static instance: MessageService;
     private storeService: StoreService;
+    private openAIService: OpenAIService;
 
     private constructor() {
         this.storeService = StoreService.getInstance();
+        this.openAIService = OpenAIService.getInstance();
     }
 
     public static getInstance(): MessageService {
@@ -32,7 +35,6 @@ You can ask any question with command /q.`;
         }
 
         const question = ctx.message.text.split(' ').slice(1).join(' ');
-
         if (!question) {
             await ctx.reply('Please follow the command with a question, example: /q What is the meaning of life?');
             return;
@@ -44,10 +46,29 @@ You can ask any question with command /q.`;
             return;
         }
 
-        const msgHistory = await this.storeService.getUserMessages(userId);
-        const reply = `Question: ${question}\nHistory: ${msgHistory.join('\n')}`;
-        
-        await ctx.reply(reply);
+        try {
+            // Get conversation history
+            const msgHistory = await this.storeService.getUserMessages(userId);
+            
+            // Generate AI response
+            const response = await this.openAIService.generateResponse(question, msgHistory);
+            
+            // Store the AI response
+            // await this.storeService.addMessage(userId, `Q: ${question}\nA: ${response}`);
+            
+            // provide history
+            
+            let reply = `Q: ${question}\n`;
+            if (msgHistory.length > 0) {
+                reply += `H: ${msgHistory.join('')}`;
+            }
+            reply += `\nA: ${response}`;
+
+            await ctx.reply(reply);
+        } catch (error) {
+            console.error('Error handling question:', error);
+            await ctx.reply('Sorry, I encountered an error while processing your question. Please try again later.');
+        }
     }
 
     public async handleTextMessage(ctx: Context): Promise<void> {
@@ -63,7 +84,7 @@ You can ask any question with command /q.`;
         }
 
         const text = ctx.message.text;
-        this.storeService.addMessage(userId, text);
+        await this.storeService.addMessage(userId, text);
         await ctx.reply('Message stored successfully');
     }
 }
