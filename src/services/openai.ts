@@ -1,7 +1,8 @@
 import { OpenAIClient } from '../openai/client';
 import { OpenAI } from 'openai';
+import { MessageData } from '../types/index';
 
-type ChatCompletionMessageParam = OpenAI.Chat.ChatCompletionMessageParam  ;
+type ChatCompletionMessageParam = OpenAI.Chat.ChatCompletionMessageParam;
 
 export class OpenAIService {
     private static instance: OpenAIService;
@@ -24,19 +25,18 @@ export class OpenAIService {
      * @param history Previous messages for context
      * @returns AI-generated response
      */
-    public async generateResponse(question: string, history: string[]): Promise<string> {
+    public async generateResponse(question: string, history: MessageData[]): Promise<string> {
         try {
             // Construct conversation context
             const messages: ChatCompletionMessageParam[] = [
                 {
                     role: 'system',
                     content: 'You are a helpful assistant. Use the provided conversation history to give contextual responses.',
-                    
                 },
                 // Add history messages
                 ...history.map((msg): ChatCompletionMessageParam => ({
                     role: 'user',
-                    content: msg
+                    content: msg.title ? `${msg.title}\n${msg.content}` : msg.content
                 })),
                 // Add the current question
                 {
