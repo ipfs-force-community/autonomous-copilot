@@ -1,5 +1,5 @@
 import OpenAI from 'openai';
-import { openAIConfig } from '../config/index.js';
+import { openAIConfig } from '../config/index.ts';
 
 export class OpenAIClient {
     private static instance: OpenAIClient;
@@ -22,7 +22,7 @@ export class OpenAIClient {
 
     static getInstance(): OpenAIClient {
         if (!OpenAIClient.instance) {
-            OpenAIClient.instance = new OpenAIClient(openAIConfig.apiKey, openAIConfig.projectId);
+            OpenAIClient.instance = new OpenAIClient(openAIConfig.apiKey, openAIConfig.projectId );
         }
         return OpenAIClient.instance;
     }
@@ -69,22 +69,22 @@ export class OpenAIClient {
     }
 }
 
-// Usage example
-import 'dotenv/config'; // This loads variables from .env into process.env
+// // Usage example
+// import 'dotenv/config'; // This loads variables from .env into process.env
 
-(async () => {
-  const apiKey = process.env['OPENAI_API_KEY'];
-  const projectId = process.env['OPENAI_PROJECT_ID'];
+// (async () => {
+//   const apiKey = process.env['OPENAI_API_KEY'];
+//   const projectId = process.env['OPENAI_PROJECT_ID'];
 
-  if (!apiKey) {
-    throw new Error('Environment variables OPENAI_API_KEY must be set');
-  }
+//   if (!apiKey) {
+//     throw new Error('Environment variables OPENAI_API_KEY must be set');
+//   }
 
-  const client = new OpenAIClient(apiKey, projectId);
-  try {
-    const response = await client.getChatCompletion('This is a test message');
-    console.log('GPT response:', response);
-  } catch (error) {
-    console.error(error);
-  }
-})();
+//   const client = new OpenAIClient(apiKey, projectId);
+//   try {
+//     const response = await client.getChatCompletion('This is a test message');
+//     console.log('GPT response:', response);
+//   } catch (error) {
+//     console.error(error);
+//   }
+// })();

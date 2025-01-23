@@ -1,5 +1,5 @@
 import { createAutoDriveApi, uploadFile, downloadFile } from '@autonomys/auto-drive';
-import { autoDriveConfig } from '../config/index.js';
+import { autoDriveConfig } from '../config/index.ts';
 
 export class AutoDriveService {
     private static instance: AutoDriveService;

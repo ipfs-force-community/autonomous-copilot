@@ -1,6 +1,6 @@
 import { Context } from 'telegraf';
-import { StoreService } from './store.js';
-import { OpenAIService } from './openai.js';
+import { StoreService } from './store.ts';
+import { OpenAIService } from './openai.ts';
 
 export class MessageService {
     private static instance: MessageService;
@@ -54,9 +54,17 @@ You can ask any question with command /q.`;
             const response = await this.openAIService.generateResponse(question, msgHistory);
             
             // Store the AI response
-            await this.storeService.addMessage(userId, `Q: ${question}\nA: ${response}`);
+            // await this.storeService.addMessage(userId, `Q: ${question}\nA: ${response}`);
             
-            await ctx.reply(response);
+            // provide history
+            
+            let reply = `Q: ${question}\n`;
+            if (msgHistory.length > 0) {
+                reply += `H: ${msgHistory.join('')}`;
+            }
+            reply += `\nA: ${response}`;
+
+            await ctx.reply(reply);
         } catch (error) {
             console.error('Error handling question:', error);
             await ctx.reply('Sorry, I encountered an error while processing your question. Please try again later.');

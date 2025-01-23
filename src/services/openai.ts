@@ -1,4 +1,4 @@
-import { OpenAIClient } from '../openai/client.js';
+import { OpenAIClient } from '../openai/client.ts';
 import { OpenAI } from 'openai';
 
 type ChatCompletionMessageParam = OpenAI.Chat.ChatCompletionMessageParam  ;
