@@ -1,5 +1,5 @@
-import { OpenAIClient } from '../openai/client.ts';
-import { openAIConfig } from '../config/index.ts';
+import { OpenAIClient } from '../openai/client';
+import { openAIConfig } from '../config/index';
 import OpenAI from 'openai';
 
 describe('OpenAIClient', () => {

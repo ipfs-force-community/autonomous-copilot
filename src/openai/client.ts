@@ -1,5 +1,5 @@
 import OpenAI from 'openai';
-import { openAIConfig } from '../config/index.ts';
+import { openAIConfig } from '../config/index';
 
 export class OpenAIClient {
     private static instance: OpenAIClient;

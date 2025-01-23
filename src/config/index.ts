@@ -1,5 +1,5 @@
 import dotenv from 'dotenv';
-import { BotConfig, AutoDriveConfig, OpenAIConfig } from '../types/index.ts';
+import { BotConfig, AutoDriveConfig, OpenAIConfig } from '../types/index';
 
 // Load environment variables
 dotenv.config();
