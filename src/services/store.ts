@@ -200,13 +200,15 @@ export class StoreService {
 
             await this.db.read();
             if (!this.db.data!.store[userId]) {
-                this.db.data!.store[userId] = { messages: [] };
+                this.db.data!.store[userId] = { Notes: [] };
             }
-            this.db.data!.store[userId].messages.push(cid);
+
+
+            this.db.data!.store[userId].Notes.push({ cid, title: title || '' });
             await this.db.write();
 
             // Generate and store embedding
-            // todo: it take too long to caculate embedding, maybe we should do it in the background
+            // todo: it take too long to calculate embedding, maybe we should do it in the background
             const embedding = await this.openAIService.generateEmbedding(content);
             await this.chromaService.addMessage(userId, cid, embedding);
 
@@ -228,6 +230,21 @@ export class StoreService {
         return this.getMessageWithCache(userId, cid);
     }
 
+    public getUserNotesTitles(userId: number): string[] {
+        const userStore = this.db.data!.store[userId];
+        if (!userStore) return [];
+
+        return userStore.Notes.map(note => note.title);
+    }
+
+    public async getUserNoteByIndex(userId: number, index: number): Promise<string | null> {
+        const userStore = this.db.data!.store[userId];
+        if (!userStore || index < 0 || index >= userStore.Notes.length) return Promise.resolve(null);
+
+        const messageData = await this.getMessageWithCache(userId, userStore.Notes[index].cid);
+        return messageData ? messageData.content : null;
+    }
+
     /**
      * Retrieve all messages for a specific user
      * Uses asyncPool to limit concurrent requests to auto drive
@@ -241,8 +258,8 @@ export class StoreService {
 
         const messages = await asyncPool(
             this.MAX_CONCURRENT_REQUESTS,
-            userStore.messages,
-            cid => this.getMessageWithCache(userId, cid)
+            userStore.Notes,
+            note => this.getMessageWithCache(userId, note.cid)
         );
 
          return messages.filter((msg): msg is MessageData => msg !== null);

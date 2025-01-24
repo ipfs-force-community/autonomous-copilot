@@ -19,7 +19,11 @@ export interface Cache {
 }
 
 export interface UserStore {
-    messages: string[]; // Array of CIDs
+    Notes: Note[]; // Array of CIDs
+}
+export interface Note {
+    cid: string;
+    title: string;
 }
 
 export interface Store {
