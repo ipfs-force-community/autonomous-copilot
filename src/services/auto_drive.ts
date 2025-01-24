@@ -71,11 +71,11 @@ export class AutoDriveService {
         try {
             const stream = await downloadFile(this.api, cid);
             let file = Buffer.alloc(0);
-            
+
             for await (const chunk of stream) {
                 file = Buffer.concat([file, chunk]);
             }
-            
+
             return file.toString('utf-8');
         } catch (error) {
             console.error('Error downloading text:', error);
