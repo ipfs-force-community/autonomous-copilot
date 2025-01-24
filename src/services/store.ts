@@ -7,7 +7,7 @@ import { ChromaService } from './chroma';
 import path from 'path';
 import fs from 'fs';
 
-// 定义数据库结构
+// Data interface for lowdb
 type Data = {
     store: Store;
 };
@@ -31,7 +31,7 @@ async function asyncPool<T, R>(
         const promise = Promise.resolve().then(() => fn(item)).then(result => {
             results[index] = result;
         });
-        
+
         executing.add(promise);
         const cleanup = () => executing.delete(promise);
         promise.then(cleanup).catch(cleanup);
@@ -54,7 +54,7 @@ export class StoreService {
     private cache: Cache = {};
     private readonly MAX_CACHE_AGE = 60 * 60 * 1000; // 1 hour
     private readonly MAX_CACHE_SIZE = 100; // per user
-    private readonly MAX_CONCURRENT_REQUESTS = 15; // 最大并发请求数
+    private readonly MAX_CONCURRENT_REQUESTS = 15; // max concurrent requests for asyncPool
 
     /**
      * Private constructor to enforce singleton pattern
@@ -64,7 +64,7 @@ export class StoreService {
         this.autoDriveService = AutoDriveService.getInstance();
         this.openAIService = OpenAIService.getInstance();
         this.chromaService = ChromaService.getInstance();
-        
+
         // 确保所有数据目录存在
         const dataDir = path.join(process.cwd(), 'data');
         const dbDir = path.join(dataDir, 'db');
@@ -117,7 +117,7 @@ export class StoreService {
     private updateCache(userId: number, cid: string, data: MessageData): void {
         this.initializeUserCache(userId);
         const userCache = this.cache[userId].messages;
-        
+
         // Check cache size and remove oldest if needed
         if (userCache.size >= this.MAX_CACHE_SIZE) {
             let oldestKey = null;
@@ -193,20 +193,22 @@ export class StoreService {
     public async addMessage(userId: number, content: string, title?: string): Promise<string | null> {
         try {
             const messageData: MessageData = { content, title };
-            
+
             let filename = title || `${Date.now()}`;
             const cid = await this.autoDriveService.uploadText(JSON.stringify(messageData), `${filename}.json`);
             if (!cid) return null;
 
             await this.db.read();
             if (!this.db.data!.store[userId]) {
-                this.db.data!.store[userId] = { messages: [] };
+                this.db.data!.store[userId] = { Notes: [] };
             }
-            this.db.data!.store[userId].messages.push(cid);
+
+
+            this.db.data!.store[userId].Notes.push({ cid, title: title || '' });
             await this.db.write();
 
             // Generate and store embedding
-            // todo: it take too long to caculate embedding, maybe we should do it in the background
+            // todo: it take too long to calculate embedding, maybe we should do it in the background
             const embedding = await this.openAIService.generateEmbedding(content);
             await this.chromaService.addMessage(userId, cid, embedding);
 
@@ -228,6 +230,21 @@ export class StoreService {
         return this.getMessageWithCache(userId, cid);
     }
 
+    public getUserNotesTitles(userId: number): string[] {
+        const userStore = this.db.data!.store[userId];
+        if (!userStore) return [];
+
+        return userStore.Notes.map(note => note.title);
+    }
+
+    public async getUserNoteByIndex(userId: number, index: number): Promise<string | null> {
+        const userStore = this.db.data!.store[userId];
+        if (!userStore || index < 0 || index >= userStore.Notes.length) return Promise.resolve(null);
+
+        const messageData = await this.getMessageWithCache(userId, userStore.Notes[index].cid);
+        return messageData ? messageData.content : null;
+    }
+
     /**
      * Retrieve all messages for a specific user
      * Uses asyncPool to limit concurrent requests to auto drive
@@ -241,11 +258,11 @@ export class StoreService {
 
         const messages = await asyncPool(
             this.MAX_CONCURRENT_REQUESTS,
-            userStore.messages,
-            cid => this.getMessageWithCache(userId, cid)
+            userStore.Notes,
+            note => this.getMessageWithCache(userId, note.cid)
         );
 
-         return messages.filter((msg): msg is MessageData => msg !== null);
+        return messages.filter((msg): msg is MessageData => msg !== null);
     }
 
     /**
@@ -263,16 +280,16 @@ export class StoreService {
         try {
             const queryEmbedding = await this.openAIService.generateEmbedding(query);
             const results = await this.chromaService.searchSimilar(userId, queryEmbedding, limit);
-            
+
             let msgCid = results.map(result => result.cid);
-  
+
             // Fetch message content for each result
             const messages = await asyncPool(
                 this.MAX_CONCURRENT_REQUESTS,
                 msgCid,
                 cid => this.getMessageWithCache(userId, cid)
             );
-            
+
             // Filter out any null results and return
             return messages.filter((msg): msg is MessageData & { score: number } => msg !== null);
         } catch (error) {

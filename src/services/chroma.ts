@@ -1,7 +1,4 @@
-import { ChromaClient, Collection  } from 'chromadb';
-import path from 'path';
-import fs from 'fs';
-import { MessageData } from '../types';
+import { ChromaClient, Collection } from 'chromadb';
 import { chromaConfig } from '../config';
 
 /**
@@ -59,7 +56,6 @@ export class ChromaService {
     public async addMessage(
         userId: number,
         cid: string,
-
         embedding: number[]
     ): Promise<void> {
         const collection = await this.getUserCollection(userId);
