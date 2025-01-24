@@ -1,14 +1,26 @@
 import { createAutoDriveApi, uploadFile, downloadFile } from '@autonomys/auto-drive';
 import { autoDriveConfig } from '../config/index';
 
+/**
+ * Service for interacting with auto-drive storage system
+ * Handles file upload and download operations
+ */
 export class AutoDriveService {
     private static instance: AutoDriveService;
     private api;
 
+    /**
+     * Private constructor to enforce singleton pattern
+     * Initializes the auto-drive API with configured API key
+     */
     private constructor() {
         this.api = createAutoDriveApi({ apiKey: autoDriveConfig.apiKey });
     }
 
+    /**
+     * Returns the singleton instance of AutoDriveService
+     * @returns AutoDriveService instance
+     */
     public static getInstance(): AutoDriveService {
         if (!AutoDriveService.instance) {
             AutoDriveService.instance = new AutoDriveService();
@@ -21,6 +33,7 @@ export class AutoDriveService {
      * @param content Text content to upload
      * @param path Virtual file path in auto-drive
      * @returns CID of the uploaded file
+     * @throws Error if upload fails
      */
     public async uploadText(content: string, path: string): Promise<string> {
         const buffer = Buffer.from(content, 'utf-8');
@@ -51,7 +64,8 @@ export class AutoDriveService {
     /**
      * Download text content from auto-drive using CID
      * @param cid Content identifier
-     * @returns Text content
+     * @returns Text content of the file
+     * @throws Error if download fails or content cannot be decoded
      */
     public async downloadText(cid: string): Promise<string> {
         try {
@@ -70,12 +84,18 @@ export class AutoDriveService {
     }
 }
 
+/**
+ * Example function demonstrating text upload to auto-drive
+ */
 async function example_upload() {
     const autoDriveService = AutoDriveService.getInstance();
     const cid = await autoDriveService.uploadText("Hello, World!", "example.txt");
     console.log(`The file is uploaded and its cid is ${cid}`);
 }
 
+/**
+ * Example function demonstrating text download from auto-drive
+ */
 async function example_download() {
     const autoDriveService = AutoDriveService.getInstance();
     const cid = '..'

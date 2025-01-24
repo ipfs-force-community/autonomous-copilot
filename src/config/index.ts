@@ -1,5 +1,5 @@
 import dotenv from 'dotenv';
-import { BotConfig, AutoDriveConfig, OpenAIConfig } from '../types/index';
+import { BotConfig, AutoDriveConfig, OpenAIConfig, ChromaConfig } from '../types/index';
 
 // Load environment variables
 dotenv.config();
@@ -16,6 +16,10 @@ export const openAIConfig: OpenAIConfig = {
     apiKey: process.env.OPENAI_API_KEY || '',
     baseUrl: process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1',
     projectId: process.env.OPENAI_PROJECT_ID || '',
+};
+
+export const chromaConfig: ChromaConfig = {
+    url: process.env.CHROMA_URL || 'http://localhost:8000',
 };
 
 // Validate configuration

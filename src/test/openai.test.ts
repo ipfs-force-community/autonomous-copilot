@@ -40,4 +40,30 @@ describe('OpenAIClient', () => {
         ];
         await expect(invalidClient.chat(messages)).rejects.toThrow();
     });
+
+    describe('Embeddings', () => {
+        test('should generate embedding for text', async () => {
+            const text = 'This is a test message';
+            const embedding = await client.createEmbedding(text);
+            
+            // Check if embedding is an array of numbers
+            expect(Array.isArray(embedding)).toBe(true);
+            expect(embedding.length).toBeGreaterThan(0);
+            embedding.forEach(value => {
+                expect(typeof value).toBe('number');
+            });
+        }, 10000);
+
+
+        test('should generate different embeddings for different texts', async () => {
+            const text1 = 'This is the first message';
+            const text2 = 'This is a completely different message';
+            
+            const embedding1 = await client.createEmbedding(text1);
+            const embedding2 = await client.createEmbedding(text2);
+
+            // Check if embeddings are different
+            expect(embedding1).not.toEqual(embedding2);
+        } , 10000);
+    });
 });

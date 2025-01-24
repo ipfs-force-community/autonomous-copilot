@@ -39,3 +39,7 @@ export interface OpenAIConfig {
     baseUrl: string;
     projectId: string;
 }
+
+export interface ChromaConfig {
+    url: string;
+}

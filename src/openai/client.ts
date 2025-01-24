@@ -67,6 +67,19 @@ export class OpenAIClient {
             throw new Error(`Error during chat completion: ${error}`);
         }
     }
+
+    async createEmbedding(text: string): Promise<number[]> {
+        try {
+            const response = await this.client.embeddings.create({
+                model: "text-embedding-ada-002",
+                input: text,
+            });
+            
+            return response.data[0].embedding;
+        } catch (error) {
+            throw new Error(`Error creating embedding: ${error}`);
+        }
+    }
 }
 
 // // Usage example

@@ -8,10 +8,17 @@ export class OpenAIService {
     private static instance: OpenAIService;
     private openAIClient: OpenAIClient;
 
+    /**
+     * Private constructor to prevent direct instantiation
+     */
     private constructor() {
         this.openAIClient = OpenAIClient.getInstance();
     }
 
+    /**
+     * Returns the singleton instance of OpenAIService
+     * @returns OpenAIService instance
+     */
     public static getInstance(): OpenAIService {
         if (!OpenAIService.instance) {
             OpenAIService.instance = new OpenAIService();
@@ -22,8 +29,9 @@ export class OpenAIService {
     /**
      * Generate a response based on the question and conversation history
      * @param question The user's question
-     * @param history Previous messages for context
-     * @returns AI-generated response
+     * @param history Array of previous messages with their content and optional titles
+     * @returns AI-generated response as a string
+     * @throws Error if response generation fails
      */
     public async generateResponse(question: string, history: MessageData[]): Promise<string> {
         try {
@@ -55,7 +63,8 @@ export class OpenAIService {
     /**
      * Generate a summary of the conversation history
      * @param messages Array of messages to summarize
-     * @returns Summary of the conversation
+     * @returns Summary of the conversation as a string
+     * @throws Error if summary generation fails
      */
     public async summarizeConversation(messages: string[]): Promise<string> {
         if (messages.length === 0) return '';
@@ -76,6 +85,21 @@ export class OpenAIService {
         } catch (error) {
             console.error('Error summarizing conversation:', error);
             throw new Error('Failed to generate conversation summary');
+        }
+    }
+
+    /**
+     * Generate an embedding vector for the given text
+     * @param text The text to generate an embedding for
+     * @returns Array of numbers representing the text embedding
+     * @throws Error if embedding generation fails
+     */
+    public async generateEmbedding(text: string): Promise<number[]> {
+        try {
+            return await this.openAIClient.createEmbedding(text);
+        } catch (error) {
+            console.error('Error generating embedding:', error);
+            throw new Error('Failed to generate embedding');
         }
     }
 }
