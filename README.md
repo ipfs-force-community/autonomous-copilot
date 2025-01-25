@@ -11,7 +11,7 @@ Autonomous Copilot also provides an SDK and API for developers, allowing them to
 - **AI-powered Personal Assistant**: Utilizes natural language processing to interact with users seamlessly.
 - **Decentralized Data Storage**: Ensures data ownership and availability with Auto-Drive technology.
 - **Telegram Integration**: Interact with the bot directly via [@autonomous_copilot_bot](https://t.me/autonomous_copilot_bot).
-  
+
 ## Roadmap
 
 While currently in the early stages, we have an ambitious vision for future features:
@@ -22,16 +22,24 @@ While currently in the early stages, we have an ambitious vision for future feat
 
 ## Getting Started
 
+### Using the Bot
+
+1. Start a chat with [@autonomous_copilot_bot](https://t.me/autonomous_copilot_bot) on Telegram.
+2. The bot will assist you with AI-powered services based on your stored data.
+3. Your data will be securely stored using **Auto-Drive** technology.
+
+### Host the Bot by Yourself
+
 Follow the steps below to install and run Autonomous Copilot.
 
-### Prerequisites
+#### Prerequisites
 
 Before you start, make sure you have the following:
 
 - **Node.js** (v16 or higher)
 - **npm**
 
-### Installation
+#### Installation
 
 1. Clone the repository:
 
@@ -66,9 +74,9 @@ Before you start, make sure you have the following:
    - **OPENAI_API_KEY**: Your OpenAI API key to integrate AI functionalities.
    - **OPENAI_PROJECT_ID**: The ID of your OpenAI project to manage your resources.
 
-### Running the Bot
+#### Running the Bot
 
-#### Development Mode (Hot Reload)
+##### Development Mode (Hot Reload)
 
 To run the bot in development mode with hot reloading:
 
@@ -78,7 +86,7 @@ npm run dev
 proxychains npm run dev
 ```
 
-#### Production Mode
+##### Production Mode
 
 To run the bot in production mode, follow these steps:
 
@@ -94,16 +102,3 @@ To run the bot in production mode, follow these steps:
    npm run build
    npm start
    ```
-
-### Using the Bot
-
-1. Start a chat with [@autonomous_copilot_bot](https://t.me/autonomous_copilot_bot) on Telegram.
-2. The bot will assist you with AI-powered services based on your stored data.
-3. Your data will be securely stored using **Auto-Drive** technology.
-
-### Available Commands
-
-- `/start` - Initialize the bot.
-- `/help` - List all available commands and usage instructions.
-
-For additional information or support, please feel free to open an issue in the repository.
