@@ -1,75 +1,109 @@
-# Personal AI Assistant with Decentralized Storage
+# **Autonomous Copilot: Autonomys Network's Intelligent Decision-Making Layer**
 
-An intelligent AI assistant leveraging [auto-drive](https://github.com/autonomys/auto-drive) for decentralized data storage.
+**Autonomous Copilot** is an AI-powered data management and decision-making tool built on the Autonomys Network, designed to help users securely store fragmented data while making informed decisions. By leveraging the Autonomys Distributed Storage Network (DSN), Autonomous Copilot ensures long-term data persistence and efficient data processing.
 
-## Features
+With a powerful combination of AI agents and decentralized storage, Autonomous Copilot enables users to store, manage, and analyze data securely. Through an intuitive interface and seamless Telegram integration, users can access personalized AI services, improving decision-making and overall productivity.
 
-- AI-powered personal assistant with natural language understanding
-- Decentralized data storage powered by auto-drive, ensuring data ownership and availability
-- Seamless interaction through Telegram (@bawangxiaoxuanfeng_bot)
+Autonomous Copilot also provides an SDK and API for developers, allowing them to integrate data management and AI-driven decision-making capabilities into their own applications.
 
+## Key Features
+
+- **AI-powered Personal Assistant**: Utilizes natural language processing to interact with users seamlessly.
+- **Decentralized Data Storage**: Ensures data ownership and availability with Auto-Drive technology.
+- **Telegram Integration**: Interact with the bot directly via [@autonomous_copilot_bot](https://t.me/autonomous_copilot_bot).
+  
 ## Roadmap
 
-While this project is in its early stages, we have an ambitious vision for its future:
+While currently in the early stages, we have an ambitious vision for future features:
 
-- Enhanced LLM integration for more sophisticated AI capabilities
-- Multi-platform support (Discord, Slack, Web Interface)
-- Extended media handling (images, videos, audio)
+- Enhanced integration with Large Language Models (LLMs) for more sophisticated AI capabilities.
+- Multi-platform support, including Discord, Slack, and Web Interfaces.
+- Extended support for multimedia handling (images, videos, audio).
 
-## How to use
+## Getting Started
+
+Follow the steps below to install and run Autonomous Copilot.
 
 ### Prerequisites
 
-- Node.js (v16 or higher)
-- npm or yarn
-- A Telegram Bot Token (from [@BotFather](https://t.me/BotFather))
+Before you start, make sure you have the following:
+
+- **Node.js** (v16 or higher)
+- **npm**
 
 ### Installation
 
 1. Clone the repository:
 
    ```bash
-   git clone <repository-url>
-   cd tg-bot
+   git clone https://github.com/ipfs-force-community/autonomous-copilot
+   cd autonomous-copilot
    ```
 
-2. Install dependencies:
+2. Install project dependencies:
 
    ```bash
    npm install
    ```
 
-3. Create a `.env` file in the root directory with the following content:
+3. Install Chroma:
+
+   Follow the instructions from the [Chroma Cookbook](https://cookbook.chromadb.dev/core/install/).
+
+4. Create a `.env` file in the root directory with the following content:
+
+   ```bash
+   BOT_TOKEN=<your_telegram_bot_token>
+   AUTO_DRIVE_API_KEY=<your_auto_drive_api_key>
+   OPENAI_API_KEY=<your_openai_api_key>
+   OPENAI_PROJECT_ID=<your_openai_project_id>
    ```
-   BOT_TOKEN=your_telegram_bot_token
-   ```
+
+   **Explanation:**
+
+   - **BOT_TOKEN**: Your Telegram Bot Token, which you can obtain from [@BotFather](https://t.me/BotFather).
+   - **AUTO_DRIVE_API_KEY**: API key for managing decentralized storage with Auto-Drive.
+   - **OPENAI_API_KEY**: Your OpenAI API key to integrate AI functionalities.
+   - **OPENAI_PROJECT_ID**: The ID of your OpenAI project to manage your resources.
 
 ### Running the Bot
 
-Development mode (with hot reload):
+#### Development Mode (Hot Reload)
+
+To run the bot in development mode with hot reloading:
 
 ```bash
 npm run dev
-# or you may want a proxy
+# Optionally, use a proxy if needed
 proxychains npm run dev
 ```
 
-Production mode:
+#### Production Mode
 
-```bash
-npm run build
-npm start
-```
+To run the bot in production mode, follow these steps:
+
+1. Start Chroma:
+
+   ```bash
+   chroma run --path ./data/chroma/
+   ```
+
+2. Build and start the bot:
+
+   ```bash
+   npm run build
+   npm start
+   ```
 
 ### Using the Bot
 
-1. Start a chat with [@bawangxiaoxuanfeng_bot](https://t.me/bawangxiaoxuanfeng_bot) on Telegram
-2. The bot provides AI agent services based on your data
-3. Your data is securely stored using auto-drive technology
+1. Start a chat with [@autonomous_copilot_bot](https://t.me/autonomous_copilot_bot) on Telegram.
+2. The bot will assist you with AI-powered services based on your stored data.
+3. Your data will be securely stored using **Auto-Drive** technology.
 
-### Commands
+### Available Commands
 
-- `/start` - Initialize the bot
-- `/help` - Show available commands
+- `/start` - Initialize the bot.
+- `/help` - List all available commands and usage instructions.
 
-For more information or support, please open an issue in the repository.
+For additional information or support, please feel free to open an issue in the repository.
