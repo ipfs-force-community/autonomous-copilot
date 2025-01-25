@@ -1,7 +1,8 @@
 import { Context } from "telegraf";
-import { OpenAIService } from "./openai";
+import { ChatCompletionMessageParam, ConversationHistory, Note, Tool } from "../types";
 import { AgentService } from "./agent";
-import { ChatCompletionMessageParam, Note, Tool, ConversationHistory } from "../types";
+import { OpenAIService } from "./openai";
+import { StoreService } from "./store";
 import { logger } from "./tools";
 
 /**
@@ -189,5 +190,17 @@ export class MessageService {
             logger.error('MessageService', 'Error handling message:', error);
             await ctx.reply('Sorry, I encountered an error while processing your message. Please try again later.');
         }
+    }
+
+
+    /**
+     * Handle the /start command by sending a welcome message
+     * @param ctx Telegram context containing user information
+     */
+    public async handleStart(ctx: Context): Promise<void> {
+        const userName = ctx.from?.first_name || "User";
+        await ctx.replyWithMarkdownV2(
+            `Hello *${userName}*\\!\n\nAI communication assistant, the AI agent will decide whether to save the content to the autonomys network or not\\.`
+        );
     }
 }
