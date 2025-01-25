@@ -1,18 +1,12 @@
 import OpenAI from "openai";
 
-export interface MessageData {
-    content: string;
-    title?: string;
-}
-
-export interface MessageCache {
-    content: string;
-    title?: string;
+export interface NoteCache {
+    note: Note;
     lastAccessed: number;
 }
 
 export interface UserCache {
-    messages: Map<string, MessageCache>;
+    notes: Map<string, NoteCache>;
     lastUpdated: number;
 }
 
@@ -21,11 +15,7 @@ export interface Cache {
 }
 
 export interface UserStore {
-    Notes: Note[]; // Array of CIDs
-}
-export interface Note {
-    cid: string;
-    title: string;
+    [cid: string]: NoteMeta;
 }
 
 export interface Store {
@@ -51,10 +41,13 @@ export interface ChromaConfig {
 }
 
 export interface NoteMeta {
-    cid: string;
     title: string;
     tags: string[];
     createdAt: string;
+}
+
+export interface NoteMetaWithCid extends NoteMeta {
+    cid: string;
 }
 
 export interface Note extends NoteMeta {
@@ -73,5 +66,9 @@ export interface Tool {
 }
 
 export type ChatCompletionMessageParam = OpenAI.Chat.ChatCompletionMessageParam;
+
+export interface ConversationHistory {
+    [userId: number]: ChatCompletionMessageParam[];
+}
 
 export const TASK_COMPLETE_SIGNAL = "TASK_COMPLETE";

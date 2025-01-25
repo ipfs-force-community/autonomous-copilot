@@ -1,6 +1,6 @@
 import { Low } from 'lowdb';
 import { JSONFile } from 'lowdb/node';
-import { Store, Cache, MessageCache, MessageData } from '../types/index';
+import { Store, Cache, NoteCache, Note, NoteMeta, NoteMetaWithCid } from '../types/index';
 import { AutoDriveService } from './auto_drive';
 import { OpenAIService } from './openai';
 import { ChromaService } from './chroma';
@@ -102,21 +102,21 @@ export class StoreService {
     private initializeUserCache(userId: number): void {
         if (!this.cache[userId]) {
             this.cache[userId] = {
-                messages: new Map(),
+                notes: new Map(),
                 lastUpdated: Date.now()
             };
         }
     }
 
     /**
-     * Update the message cache for a specific user
+     * Update the note cache for a specific user
      * @param userId Telegram user ID
      * @param cid Content identifier from auto drive
-     * @param data Message data containing content and optional title
+     * @param note Note data containing content and optional title
      */
-    private updateCache(userId: number, cid: string, data: MessageData): void {
+    private updateCache(userId: number, cid: string, note: Note): void {
         this.initializeUserCache(userId);
-        const userCache = this.cache[userId].messages;
+        const userCache = this.cache[userId].notes;
 
         // Check cache size and remove oldest if needed
         if (userCache.size >= this.MAX_CACHE_SIZE) {
@@ -136,164 +136,179 @@ export class StoreService {
         }
 
         userCache.set(cid, {
-            content: data.content,
-            title: data.title,
+            note,
             lastAccessed: Date.now()
         });
     }
 
     /**
-     * Retrieve a message from cache or storage
+     * Retrieve a note from cache or storage
      * @param userId Telegram user ID
      * @param cid Content identifier from auto drive
-     * @returns MessageData object if found, null otherwise
+     * @returns Note object if found, null otherwise
      */
-    private async getMessageWithCache(userId: number, cid: string): Promise<MessageData | null> {
-        const userCache = this.cache[userId]?.messages;
+    private async getNoteWithCache(userId: number, cid: string): Promise<Note | null> {
+        const userCache = this.cache[userId]?.notes;
         const cached = userCache?.get(cid);
 
         if (cached && Date.now() - cached.lastAccessed < this.MAX_CACHE_AGE) {
             // Update last accessed time
             cached.lastAccessed = Date.now();
-            return {
-                content: cached.content,
-                title: cached.title
-            };
+            return cached.note;
         }
 
         // If not in cache or expired, fetch from storage
         try {
             const data = await this.autoDriveService.downloadText(cid);
             if (data) {
-                let messageData: MessageData;
-                try {
-                    messageData = JSON.parse(data);
-                } catch {
-                    // If the data is not JSON, treat it as plain content
-                    messageData = { content: data };
-                }
-                this.updateCache(userId, cid, messageData);
-                return messageData;
+                let note: Note = JSON.parse(data);
+                this.updateCache(userId, cid, note);
+                return note;
             }
             return null;
         } catch (error) {
-            console.error('Error fetching message:', error);
+            console.error('Error fetching note:', error);
             return null;
         }
     }
 
     /**
-     * Add a new message to storage and cache
+     * Add a new note to storage and cache
      * Also generates and stores embedding in Chroma
      * @param userId Telegram user ID
-     * @param content Message content
-     * @param title Optional message title
+     * @param content Note content
+     * @param title Optional note title
+     * @param tags Optional tags for the note
      * @returns Content identifier if successful, null otherwise
      */
-    public async addMessage(userId: number, content: string, title?: string): Promise<string | null> {
+    public async addNote(userId: number, note: Note): Promise<string | null> {
         try {
-            const messageData: MessageData = { content, title };
-
-            let filename = title || `${Date.now()}`;
-            const cid = await this.autoDriveService.uploadText(JSON.stringify(messageData), `${filename}.json`);
+            const cid = await this.autoDriveService.uploadText(JSON.stringify(note), `${note.title}.json`);
             if (!cid) return null;
 
             await this.db.read();
             if (!this.db.data!.store[userId]) {
-                this.db.data!.store[userId] = { Notes: [] };
+                this.db.data!.store[userId] = { };
             }
 
-
-            this.db.data!.store[userId].Notes.push({ cid, title: title || '' });
+            // Store NoteMeta
+            const noteMeta: NoteMeta = {
+                title: note.title,
+                tags: note.tags,
+                createdAt: note.createdAt
+            };
+            
+            this.db.data!.store[userId][cid] = noteMeta;
             await this.db.write();
 
             // Generate and store embedding
-            // todo: it take too long to calculate embedding, maybe we should do it in the background
-            const embedding = await this.openAIService.generateEmbedding(content);
-            await this.chromaService.addMessage(userId, cid, embedding);
+            const embedding = await this.openAIService.generateEmbedding(note.content);
+            await this.chromaService.addNote(userId, cid, embedding);
 
-            this.updateCache(userId, cid, messageData);
+            this.updateCache(userId, cid, note);
             return cid;
         } catch (error) {
-            console.error('Error adding message:', error);
+            console.error('Error adding note:', error);
             return null;
         }
     }
 
     /**
-     * Retrieve a specific message by its content identifier
+     * Retrieve a specific note by its content identifier
      * @param userId Telegram user ID
      * @param cid Content identifier from auto drive
-     * @returns MessageData object if found, null otherwise
+     * @returns Note object if found, null otherwise
      */
-    public async getMessage(userId: number, cid: string): Promise<MessageData | null> {
-        return this.getMessageWithCache(userId, cid);
+    public async getNote(userId: number, cid: string): Promise<Note | null> {
+        return this.getNoteWithCache(userId, cid);
     }
 
-    public getUserNotesTitles(userId: number): string[] {
-        const userStore = this.db.data!.store[userId];
-        if (!userStore) return [];
-
-        return userStore.Notes.map(note => note.title);
-    }
-
-    public async getUserNoteByIndex(userId: number, index: number): Promise<string | null> {
-        const userStore = this.db.data!.store[userId];
-        if (!userStore || index < 0 || index >= userStore.Notes.length) return Promise.resolve(null);
-
-        const messageData = await this.getMessageWithCache(userId, userStore.Notes[index].cid);
-        return messageData ? messageData.content : null;
-    }
 
     /**
-     * Retrieve all messages for a specific user
+     * Retrieve all notes for a specific user
      * Uses asyncPool to limit concurrent requests to auto drive
      * @param userId Telegram user ID
-     * @returns Array of MessageData objects
+     * @returns Array of Note objects
      */
-    public async getUserMessages(userId: number): Promise<MessageData[]> {
+    public async getUserNotes(userId: number): Promise<Note[]> {
         await this.db.read();
         const userStore = this.db.data!.store[userId];
         if (!userStore) return [];
 
-        const messages = await asyncPool(
+        const notes = await asyncPool(
             this.MAX_CONCURRENT_REQUESTS,
-            userStore.Notes,
-            note => this.getMessageWithCache(userId, note.cid)
+            Object.keys(userStore),
+            cid => this.getNoteWithCache(userId, cid)
         );
 
-        return messages.filter((msg): msg is MessageData => msg !== null);
+        return notes.filter((note): note is Note => note !== null);
     }
 
     /**
-     * Search for similar messages using vector similarity
+     * Get all note metadata with a specific tag
+     * @param userId Telegram user ID
+     * @param tag Tag to filter by
+     * @returns Array of NoteMeta objects with their corresponding cids
+     */
+    public async listUserNotesByTag(userId: number, tag: string): Promise<NoteMetaWithCid[]> {
+        await this.db.read();
+        const userStore = this.db.data!.store[userId];
+        if (!userStore) return [];
+
+        return Object.entries(userStore)
+            .filter(([_, meta]) => meta.tags.includes(tag))
+            .map(([cid, meta]) => ({
+                ...meta,
+                cid
+            }));
+    }
+
+    /**
+     * List all NoteMeta objects with their cids for a specific user
+     * @param userId Telegram user ID
+     * @returns Array of NoteMeta objects with their corresponding cids
+     */
+    public async listUserNotes(userId: number): Promise<NoteMetaWithCid[]> {
+        await this.db.read();
+        const userStore = this.db.data!.store[userId];
+        if (!userStore) return [];
+
+        return Object.entries(userStore).map(([cid, meta]) => ({
+            ...meta,
+            cid
+        }));
+    }
+
+    /**
+     * Search for similar notes using vector similarity
      * @param userId Telegram user ID
      * @param query Search query
      * @param limit Maximum number of results
-     * @returns Array of similar messages with their scores
+     * @returns Array of similar notes with their scores
      */
-    public async searchSimilarMessages(
+    public async searchSimilarNotes(
         userId: number,
         query: string,
         limit: number = 5
-    ): Promise<Array<MessageData & { score: number }>> {
+    ): Promise<Array<Note & { score: number }>> {
         try {
             const queryEmbedding = await this.openAIService.generateEmbedding(query);
             const results = await this.chromaService.searchSimilar(userId, queryEmbedding, limit);
 
-            let msgCid = results.map(result => result.cid);
-
-            // Fetch message content for each result
-            const messages = await asyncPool(
+            const notes = await asyncPool(
                 this.MAX_CONCURRENT_REQUESTS,
-                msgCid,
-                cid => this.getMessageWithCache(userId, cid)
+                results,
+                result => this.getNoteWithCache(userId, result.cid)
             );
 
-            // Filter out any null results and return
-            return messages.filter((msg): msg is MessageData & { score: number } => msg !== null);
+            return notes
+                .map((note, index) => note && {
+                    ...note,
+                    score: results[index].score
+                })
+                .filter((note): note is Note & { score: number } => note !== null);
         } catch (error) {
-            console.error('Error searching similar messages:', error);
+            console.error('Error searching similar notes:', error);
             return [];
         }
     }
@@ -317,7 +332,7 @@ export class StoreService {
     public async clearUserData(userId?: number): Promise<void> {
         if (userId) {
             this.clearCache(userId);
-            await this.chromaService.deleteUserMessages(userId);
+            await this.chromaService.deleteUserNotes(userId);
         } else {
             this.cache = {};
             // Clear all collections if needed
@@ -334,7 +349,7 @@ export class StoreService {
         if (!userCache) return null;
 
         return {
-            size: userCache.messages.size,
+            size: userCache.notes.size,
             lastUpdated: userCache.lastUpdated
         };
     }

@@ -1,16 +1,20 @@
 import { Context } from "telegraf";
 import { StoreService } from "./store";
 import { OpenAIService } from "./openai";
+import { AgentService } from "./agent";
+import { ChatCompletionMessageParam, Note, Tool, ConversationHistory } from "../types";
+import { logger } from "./tools";
 
 /**
  * Service for handling Telegram bot message interactions
- * Manages message processing, storage, and AI-powered responses
+ * Creates a new Agent instance for each message
  */
 export class MessageService {
     private static instance: MessageService;
     private storeService: StoreService;
     private openAIService: OpenAIService;
-    private userState: Map<number, { step: string; title?: string }> = new Map();
+    private conversationHistory: ConversationHistory = {};
+    private readonly MAX_HISTORY_LENGTH = 10; // Maximum number of messages to keep in history
 
     /**
      * Private constructor to enforce singleton pattern
@@ -19,6 +23,111 @@ export class MessageService {
     private constructor() {
         this.storeService = StoreService.getInstance();
         this.openAIService = OpenAIService.getInstance();
+    }
+
+    /**
+     * Creates tools for a specific user's AgentService instance
+     * @param userId The Telegram user ID
+     * @param ctx The Telegram context for sending replies
+     * @returns Array of tools configured for this user
+     */
+    private createUserTools(userId: number, ctx: Context): Tool[] {
+        return [
+            {
+                name: "saveNote",
+                description: "Save a new note with content strictly from user input (NEVER modify or fabricate user's content). Title and tags can be intelligently generated based on the content. Returns the cid of the saved note.",
+                parameters: {
+                    type: "object",
+                    properties: {
+                        title: { type: "string" },
+                        content: { type: "string" },
+                        tags: { type: "array", items: { type: "string" } }
+                    },
+                    required: ["title", "content", "tags"]
+                },
+                execute: async (params) => {
+                    const { title, content, tags } = params;
+                    let note :Note = {
+                        title,
+                        content,
+                        tags,
+                        createdAt: new Date().toISOString()
+                    };
+                    const cid = await this.storeService.addNote(userId, note);
+                    return cid || "";
+                }
+            },
+            {
+                name: "listNotes",
+                description: "List all saved notes with their cids, titles, and tags. Always try to provide a tag to filter notes efficiently. Listing all notes without a tag should be avoided to prevent information overload.",
+                parameters: {
+                    type: "object",
+                    properties: {
+                        tag: { type: "string" }
+                    },
+                    required: []
+                },
+                execute: async (params) => {
+                    const { tag } = params;
+                    const notes = tag 
+                        ? await this.storeService.listUserNotesByTag(userId, tag)
+                        : await this.storeService.listUserNotes(userId);
+                    return JSON.stringify(notes);
+                }
+            },
+            {
+                name: "searchNotes",
+                description: "Search for notes based on semantic similarity to the query text. Returns notes ranked by relevance.",
+                parameters: {
+                    type: "object",
+                    properties: {
+                        query: { type: "string" }
+                    },
+                    required: ["query"]
+                },
+                execute: async (params) => {
+                    const { query } = params;
+                    const notes = await this.storeService.searchSimilarNotes(userId, query);
+                    return JSON.stringify(notes);
+                }
+            },
+            {
+                name: "viewNote",
+                description: "View the complete content of a specific note by its cid",
+                parameters: {
+                    type: "object",
+                    properties: {
+                        noteId: { type: "string" }
+                    },
+                    required: ["noteId"]
+                },
+                execute: async (params) => {
+                    const { noteId } = params;
+                    const note = await this.storeService.getNote(userId, noteId);
+                    return note ? JSON.stringify(note) : "Note not found";
+                }
+            },
+            {
+                name: "replyUser",
+                description: "Reply to user with a clear and well-structured message in the same language they used. Use bullet points for lists, backticks for code/commands, and keep the response concise and easy to read. Always maintain consistency with the user's language choice throughout the conversation.",
+                parameters: {
+                    type: "object",
+                    properties: {
+                        message: { type: "string" }
+                    },
+                    required: ["message"]
+                },
+                execute: async (params) => {
+                    const { message } = params;
+                    // replace \\n with \n and ensure message is a string
+                    const formattedMessage = String(message).replace(/\\n/g, "\n");
+                    await ctx.reply(formattedMessage, {
+                        parse_mode: "Markdown"
+                    });
+                    return formattedMessage;
+                }
+            }
+        ];
     }
 
     /**
@@ -33,136 +142,10 @@ export class MessageService {
     }
 
     /**
-     * Handle the /start command
-     * Sends a welcome message to the user explaining bot functionality
-     * @param ctx Telegram context containing message and user information
-     * @throws Error if message cannot be sent
-     */
-    public async handleStart(ctx: Context): Promise<void> {
-        const firstName = ctx.from?.first_name || "User";
-        const welcomeMessage = `Hello *${firstName}*\\!
-
-Every message you send will be collected as a note and stored in a decentralized storage system, ensuring your data is secure and private\\.
-
-You can also leverage AI to get answers to your question\\.`;
-
-
-        // If triggered by a command like /start
-        await ctx.reply(welcomeMessage, {
-            reply_markup: {
-                inline_keyboard: [
-                    [
-                        { text: "Create Note", callback_data: "create_note" },
-                        { text: "Notes", callback_data: "notes" },
-                    ],
-                ],
-            },
-            parse_mode: "MarkdownV2",
-        });
-
-    }
-
-    public async handleCallbackQuery(ctx: Context): Promise<void> {
-        if (!('data' in ctx.callbackQuery!)) return;
-
-        const userId = ctx.from?.id;
-        if (!userId) return;
-
-        const data = ctx.callbackQuery.data;
-
-        if (data === 'create_note') {
-            this.userState.set(userId, { step: "awaiting_title" });
-            await ctx.reply('Please enter the title for your note:');
-            return;
-        }
-
-        if (data === 'notes') {
-            const titles = this.storeService.getUserNotesTitles(userId);
-            if (titles.length === 0) {
-                await ctx.reply('No notes found');
-                return;
-            }
-
-            const notesMsg = 'Here are your notes:\n\nClick on a title to view the content:';
-            const notesKeyboard = titles.map((title, idx) => [{ text: `${idx + 1}. ${title}`, callback_data: `view_note_${idx}` }]);
-
-            await ctx.editMessageText(notesMsg, {
-                reply_markup: {
-                    inline_keyboard: notesKeyboard,
-                },
-            });
-        }
-
-        if (data.startsWith('view_note_')) {
-            const idx = parseInt(data.split('_')[2]);
-            const content = await this.storeService.getUserNoteByIndex(userId, idx);
-            if (!content) {
-                await ctx.reply('Note not found');
-                return;
-            }
-
-            await ctx.reply(content);
-        }
-    }
-
-    /**
-     * Handle the /q command for asking questions
-     * Retrieves conversation history, generates AI response, and sends it back
+     * Handle all text messages by creating a new Agent instance
+     * Each message gets its own Agent instance that is disposed after use
      * @param ctx Telegram context containing message and user information
      * @throws Error if message processing fails
-     */
-    public async handleQuestion(ctx: Context): Promise<void> {
-        if (!ctx.message || !('text' in ctx.message)) {
-            await ctx.reply('Invalid message format');
-            return;
-        }
-
-        const question = ctx.message.text.split(' ').slice(1).join(' ');
-        if (!question) {
-            await ctx.reply('Please follow the command with a question, example: /q What is the meaning of life?');
-            return;
-        }
-
-        const userId = ctx.from?.id;
-        if (!userId) {
-            await ctx.reply('User ID not found');
-            return;
-        }
-
-        try {
-            // Get conversation history
-            // const msgHistory = await this.storeService.getUserMessages(userId);
-            const similarMessages = await this.storeService.searchSimilarMessages(userId, question);
-            const msgHistory = similarMessages.map(msg => ({
-                content: msg.content,
-                title: msg.title
-            }));
-
-            // Generate AI response
-            const response = await this.openAIService.generateResponse(question, msgHistory);
-
-            // Store the AI response
-            // await this.storeService.addMessage(userId, `Q: ${question}\nA: ${response}`);
-
-            // provide history
-            let reply = `Q: ${question}\n`;
-            if (msgHistory.length > 0) {
-                reply += `H: ${msgHistory.join(' \n')}\n`;
-            }
-            reply += `\nA: ${response}`;
-
-            await ctx.reply(reply);
-        } catch (error) {
-            console.error('Error handling question:', error);
-            await ctx.reply('Sorry, I encountered an error while processing your question. Please try again later.');
-        }
-    }
-
-    /**
-     * Handle regular text messages
-     * Stores the message in auto-drive and confirms storage to user
-     * @param ctx Telegram context containing message and user information
-     * @throws Error if message storage fails
      */
     public async handleTextMessage(ctx: Context): Promise<void> {
         if (!ctx.message || !("text" in ctx.message)) {
@@ -176,82 +159,35 @@ You can also leverage AI to get answers to your question\\.`;
             return;
         }
 
-        const userState = this.userState.get(userId);
-        const text = ctx.message.text;
-        if (userState?.step === "awaiting_title" || userState?.step === "awaiting_content") {
-            await this.handleCreateNoteText(ctx, userId, text, userState);
-            return;
-        }
-
-
-        const query = text.split(' ').slice(1).join(' ');
-        if (!query) {
-            await ctx.reply('Please follow the command with a search query, example: /search project updates');
-            return;
-        }
-
-    }
-
-    public async handleCreateNoteText(ctx: Context, userID: number, text: string, userState: { step: string; title?: string }): Promise<void> {
-        if (userState.step === 'awaiting_title') {
-            this.userState.set(userID, { step: 'awaiting_content', title: text });
-            await ctx.reply('Great! Now, please enter the content for your note:');
-        } else if (userState.step === 'awaiting_content') {
-            const title = userState.title;
-            const cid = await this.storeService.addMessage(userID, text, title);
-            this.userState.delete(userID);
-
-            if (!cid) {
-                await ctx.reply('Error creating note');
-                return;
-            }
-
-            const replyMsg = `Note *${title}* created successfully\\! \n\n*CID*: ${cid}`;
-            await ctx.replyWithMarkdownV2(replyMsg);
-        }
-    }
-
-    /**
-     * Handle the /search command for finding similar messages
-     * @param ctx Telegram context containing message and user information
-     * @throws Error if search fails
-     */
-    public async handleSearch(ctx: Context): Promise<void> {
-        if (!ctx.message || !('text' in ctx.message)) {
-            await ctx.reply('Invalid message format');
-            return;
-        }
-
-        const query = ctx.message.text.split(' ').slice(1).join(' ');
-        if (!query) {
-            await ctx.reply('Please follow the command with a search query, example: /search project updates');
-            return;
-        }
-
-        const userId = ctx.from?.id;
-        if (!userId) {
-            await ctx.reply('User ID not found');
-            return;
-        }
-
         try {
-            const results = await this.storeService.searchSimilarMessages(userId, query);
+            // Create a new agent instance for this message
+            const userName = ctx.from?.first_name || "User";
+            const agent = new AgentService(this.createUserTools(userId, ctx), userName);
 
-            if (results.length === 0) {
-                await ctx.reply('No similar messages found.');
-                return;
+            // initialize conversation history
+            if (!this.conversationHistory[userId]) {
+                this.conversationHistory[userId] = [];
             }
+            
+            // Limit history length by removing older messages (keeping system message)
+            if (this.conversationHistory[userId].length > this.MAX_HISTORY_LENGTH ) {
+                // Remove the oldest message
+                this.conversationHistory[userId].shift();
+            }
+            
+            // Add the new message to the history
+            const messageParam :ChatCompletionMessageParam = {
+                role: "user",
+                content: ctx.message.text
+            };
+            this.conversationHistory[userId].push(messageParam);
+            
 
-            const response = results.map((result, index) => {
-                const title = result.title ? `[${result.title}]\n` : '';
-                const score = Math.round((1 - result.score) * 100); // Convert distance to similarity percentage
-                return `${index + 1}. ${title}${result.content}\nSimilarity: ${score}%`;
-            }).join('\n\n');
-
-            await ctx.reply(`Found ${results.length} similar messages:\n\n${response}`);
+            // Process the message using conversation history
+            await agent.chat(this.conversationHistory[userId]);
         } catch (error) {
-            console.error('Error searching messages:', error);
-            await ctx.reply('Sorry, I encountered an error while searching. Please try again later.');
+            logger.error('MessageService', 'Error handling message:', error);
+            await ctx.reply('Sorry, I encountered an error while processing your message. Please try again later.');
         }
     }
 }

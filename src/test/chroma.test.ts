@@ -45,7 +45,7 @@ describe('ChromaService', () => {
         it('should add vectors to collection', async () => {
             // Add all test messages
             for (let i = 0; i < testMessages.length; i++) {
-                await chromaService.addMessage(
+                await chromaService.addNote(
                     userId,
                     testMessages[i].cid,
                     testEmbeddings[i]
@@ -61,7 +61,7 @@ describe('ChromaService', () => {
         it('should find similar vectors', async () => {
             // Add all test messages
             for (let i = 0; i < testMessages.length; i++) {
-                await chromaService.addMessage(
+                await chromaService.addNote(
                     userId,
                     testMessages[i].cid,
                     testEmbeddings[i]
