@@ -1,6 +1,5 @@
 import { OpenAIClient } from '../openai/client';
 import { OpenAI } from 'openai';
-import { MessageData } from '../types/index';
 
 type ChatCompletionMessageParam = OpenAI.Chat.ChatCompletionMessageParam;
 
@@ -24,40 +23,6 @@ export class OpenAIService {
             OpenAIService.instance = new OpenAIService();
         }
         return OpenAIService.instance;
-    }
-
-    /**
-     * Generate a response based on the question and conversation history
-     * @param question The user's question
-     * @param history Array of previous messages with their content and optional titles
-     * @returns AI-generated response as a string
-     * @throws Error if response generation fails
-     */
-    public async generateResponse(question: string, history: MessageData[]): Promise<string> {
-        try {
-            // Construct conversation context
-            const messages: ChatCompletionMessageParam[] = [
-                {
-                    role: 'system',
-                    content: 'You are a helpful assistant. Use the provided conversation history to give contextual responses.',
-                },
-                // Add history messages
-                ...history.map((msg): ChatCompletionMessageParam => ({
-                    role: 'user',
-                    content: msg.title ? `${msg.title}\n${msg.content}` : msg.content
-                })),
-                // Add the current question
-                {
-                    role: 'user',
-                    content: question
-                }
-            ];
-
-            return await this.openAIClient.chat(messages);
-        } catch (error) {
-            console.error('Error generating AI response:', error);
-            throw new Error('Failed to generate response');
-        }
     }
 
     /**

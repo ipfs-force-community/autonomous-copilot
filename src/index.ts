@@ -13,9 +13,9 @@ bot.catch((err, ctx) => {
 });
 
 // Command handlers
-bot.command('start', (ctx) => messageService.handleStart(ctx));
-bot.command('q', (ctx) => messageService.handleQuestion(ctx));
-bot.on('callback_query', (ctx) => messageService.handleCallbackQuery(ctx));
+// bot.command('start', (ctx) => messageService.handleStart(ctx));
+// bot.command('q', (ctx) => messageService.handleQuestion(ctx));
+// bot.on('callback_query', (ctx) => messageService.handleCallbackQuery(ctx));
 
 // Message handlers
 bot.on(message('text'), (ctx) => messageService.handleTextMessage(ctx));

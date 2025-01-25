@@ -53,7 +53,7 @@ export class ChromaService {
      * @param cid Content identifier from auto-drive
      * @param embedding Vector embedding of the message
      */
-    public async addMessage(
+    public async addNote(
         userId: number,
         cid: string,
         embedding: number[]
@@ -99,7 +99,7 @@ export class ChromaService {
      * @param userId Telegram user ID
      * @param cid Content identifier to delete
      */
-    public async deleteMessage(userId: number, cid: string): Promise<void> {
+    public async deleteNote(userId: number, cid: string): Promise<void> {
         const collection = await this.getUserCollection(userId);
         await collection.delete({
             ids: [cid]
@@ -110,7 +110,7 @@ export class ChromaService {
      * Delete all messages for a specific user
      * @param userId Telegram user ID
      */
-    public async deleteUserMessages(userId: number): Promise<void> {
+    public async deleteUserNotes(userId: number): Promise<void> {
         const collection = await this.getUserCollection(userId);
         await collection.delete({
             where: {}
