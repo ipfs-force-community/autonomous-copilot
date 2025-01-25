@@ -112,3 +112,7 @@ To run the bot in production mode, follow these steps:
    npm run build
    npm start
    ```
+
+### Simple Demonstration
+
+![demonstration](./doc/images/demo.png)
