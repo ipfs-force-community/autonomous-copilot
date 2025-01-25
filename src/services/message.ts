@@ -1,5 +1,4 @@
 import { Context } from "telegraf";
-import { StoreService } from "./store";
 import { OpenAIService } from "./openai";
 import { AgentService } from "./agent";
 import { ChatCompletionMessageParam, Note, Tool, ConversationHistory } from "../types";
@@ -137,6 +136,7 @@ export class MessageService {
     public static getInstance(): MessageService {
         if (!MessageService.instance) {
             MessageService.instance = new MessageService();
+
         }
         return MessageService.instance;
     }
