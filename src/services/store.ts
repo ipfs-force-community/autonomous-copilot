@@ -65,7 +65,7 @@ export class StoreService {
         this.openAIService = OpenAIService.getInstance();
         this.chromaService = ChromaService.getInstance();
 
-        // 确保所有数据目录存在
+        // Ensure all data directories exist
         const dataDir = path.join(process.cwd(), 'data');
         const dbDir = path.join(dataDir, 'db');
         const cacheDir = path.join(dataDir, 'cache');
