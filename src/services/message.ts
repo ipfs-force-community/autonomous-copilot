@@ -1,6 +1,6 @@
 import { Context } from "telegraf";
-import { StoreService } from "./store";
 import { OpenAIService } from "./openai";
+import { StoreService } from "./store";
 
 /**
  * Service for handling Telegram bot message interactions
@@ -131,7 +131,6 @@ You can also leverage AI to get answers to your question\\.`;
 
         try {
             // Get conversation history
-            // const msgHistory = await this.storeService.getUserMessages(userId);
             const similarMessages = await this.storeService.searchSimilarMessages(userId, question);
             const msgHistory = similarMessages.map(msg => ({
                 content: msg.content,
@@ -140,9 +139,6 @@ You can also leverage AI to get answers to your question\\.`;
 
             // Generate AI response
             const response = await this.openAIService.generateResponse(question, msgHistory);
-
-            // Store the AI response
-            // await this.storeService.addMessage(userId, `Q: ${question}\nA: ${response}`);
 
             // provide history
             let reply = `Q: ${question}\n`;
@@ -182,14 +178,6 @@ You can also leverage AI to get answers to your question\\.`;
             await this.handleCreateNoteText(ctx, userId, text, userState);
             return;
         }
-
-
-        const query = text.split(' ').slice(1).join(' ');
-        if (!query) {
-            await ctx.reply('Please follow the command with a search query, example: /search project updates');
-            return;
-        }
-
     }
 
     public async handleCreateNoteText(ctx: Context, userID: number, text: string, userState: { step: string; title?: string }): Promise<void> {

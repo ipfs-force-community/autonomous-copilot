@@ -81,23 +81,3 @@ export class OpenAIClient {
         }
     }
 }
-
-// // Usage example
-// import 'dotenv/config'; // This loads variables from .env into process.env
-
-// (async () => {
-//   const apiKey = process.env['OPENAI_API_KEY'];
-//   const projectId = process.env['OPENAI_PROJECT_ID'];
-
-//   if (!apiKey) {
-//     throw new Error('Environment variables OPENAI_API_KEY must be set');
-//   }
-
-//   const client = new OpenAIClient(apiKey, projectId);
-//   try {
-//     const response = await client.getChatCompletion('This is a test message');
-//     console.log('GPT response:', response);
-//   } catch (error) {
-//     console.error(error);
-//   }
-// })();
