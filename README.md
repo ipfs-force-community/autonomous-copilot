@@ -20,6 +20,16 @@ While currently in the early stages, we have an ambitious vision for future feat
 - Multi-platform support, including Discord, Slack, and Web Interfaces.
 - Extended support for multimedia handling (images, videos, audio).
 
+## Structure
+
+- Flow for persist user data
+
+![persist data](./doc/images/store.png)
+
+- Flow to query user data for analysis
+
+![query data](./doc/images/query.png)
+
 ## Getting Started
 
 ### Using the Bot
