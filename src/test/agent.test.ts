@@ -1,8 +1,7 @@
 import { describe, expect, it, beforeAll } from '@jest/globals';
-import OpenAI from 'openai';
-import { OpenAIClient } from '../openai/client';
+import { ChatMessage } from '../types/model';
 import { AgentService } from '../services/agent';
-import { ChatCompletionMessageParam, Tool, TASK_COMPLETE_SIGNAL } from '../types';
+import { Tool } from '../types';
 
 interface NoteMeta {
     cid: string;
@@ -131,7 +130,7 @@ describe('AgentService Tests', () => {
         it('should process messages and execute tools', async () => {
             const mockTools = createMockTools();
             const agentService = new AgentService(mockTools, testUser);
-            const messages: ChatCompletionMessageParam[] = [
+            const messages: ChatMessage[] = [
                 { role: "user", content: "Show me my dessert recipes" }
             ];
 
@@ -153,7 +152,7 @@ describe('AgentService Tests', () => {
         it('should create note with tags', async () => {
             const mockTools = createMockTools();
             const agentService = new AgentService(mockTools, testUser);
-            const messages: ChatCompletionMessageParam[] = [
+            const messages: ChatMessage[] = [
                 {
                     role: 'user',
                     content: `Chocolate Cake Recipe
@@ -191,7 +190,7 @@ Instructions:
         it('should list notes', async () => {
             const mockTools = createMockTools();
             const agentService = new AgentService(mockTools, testUser);
-            const messages: ChatCompletionMessageParam[] = [
+            const messages: ChatMessage[] = [
                 { role: "user", content: "Show me my dessert recipes" }
             ];
             
@@ -204,7 +203,7 @@ Instructions:
         it('should list and view note', async () => {
             const mockTools = createMockTools();
             const agentService = new AgentService(mockTools, testUser);
-            const messages: ChatCompletionMessageParam[] = [
+            const messages: ChatMessage[] = [
                 { role: "user", content: "Show me the chocolate cake recipe" }
             ];
             
@@ -227,7 +226,7 @@ Instructions:
         it('should handle missing tool gracefully', async () => {
             const mockTools = createMockTools();
             const agentService = new AgentService(mockTools, testUser);
-            const messages: ChatCompletionMessageParam[] = [
+            const messages: ChatMessage[] = [
                 { role: "user", content: "Test command" },
                 { role: "assistant", content: '<call>nonexistentTool(param="value")</call>' }
             ];

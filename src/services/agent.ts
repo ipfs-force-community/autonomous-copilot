@@ -1,5 +1,7 @@
-import { OpenAIClient } from '../openai/client';
-import { ChatCompletionMessageParam, TASK_COMPLETE_SIGNAL, Tool } from '../types';
+import { ChatMessage } from '../types/model';
+import { modelConfig } from '../config';
+import { ChatService } from './chat';
+import { Tool,TASK_COMPLETE_SIGNAL} from '../types';
 import { logger } from './tools';
 
 interface ToolCall {
@@ -8,13 +10,12 @@ interface ToolCall {
 }
 
 export class AgentService {
-    private openAIClient: OpenAIClient;
+    private chatService: ChatService;
     private tools: Tool[];
     private toolMap: Map<string, Tool>;
     private userName: string;
 
     constructor(tools: Tool[], userName: string = 'User') {
-        // Add complete tool to the provided tools
         const completeTool: Tool = {
             name: "complete",
             description: "Call this tool when you have completed the user's request and no further actions are needed",
@@ -26,7 +27,7 @@ export class AgentService {
             execute: async () => TASK_COMPLETE_SIGNAL
         };
 
-        this.openAIClient = OpenAIClient.getInstance();
+        this.chatService = ChatService.getInstance(modelConfig.type, modelConfig.config);
         this.tools = [...tools, completeTool];
         this.toolMap = new Map(this.tools.map(tool => [tool.name, tool]));
         this.userName = userName;
@@ -130,7 +131,7 @@ Remember: EVERY response must be a tool call. No direct text allowed.`;
         return toolCalls;
     }
 
-    public async chat(messages: ChatCompletionMessageParam[]): Promise<void> {
+    public async chat(messages: ChatMessage[]): Promise<void> {
         logger.info('AgentService', `Starting chat with ${messages.length} messages`);
         
         // Ensure system prompt is present and up to date
@@ -141,7 +142,7 @@ Remember: EVERY response must be a tool call. No direct text allowed.`;
         }
 
         try {
-            const response = await this.openAIClient.chat(messages);
+            const response = await this.chatService.chat(messages);
             logger.debug('AgentService', 'Received response from OpenAI', response);
             messages.push({ role: "assistant", content: response });
             

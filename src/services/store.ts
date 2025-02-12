@@ -1,11 +1,12 @@
 import { Low } from 'lowdb';
 import { JSONFile } from 'lowdb/node';
-import { Store, Cache, NoteCache, Note, NoteMeta, NoteMetaWithCid } from '../types/index';
+import { Store, Cache, Note, NoteMeta, NoteMetaWithCid } from '../types/index';
 import { AutoDriveService } from './auto_drive';
-import { OpenAIService } from './openai';
 import { ChromaService } from './chroma';
 import path from 'path';
 import fs from 'fs';
+import { EmbeddingService } from './embedding';
+import { modelConfig } from '../config';
 
 // Data interface for lowdb
 type Data = {
@@ -48,7 +49,7 @@ async function asyncPool<T, R>(
 export class StoreService {
     private static instance: StoreService;
     private autoDriveService: AutoDriveService;
-    private openAIService: OpenAIService;
+    private embeddingService: EmbeddingService;
     private chromaService: ChromaService;
     private db: Low<Data>;
     private cache: Cache = {};
@@ -62,7 +63,7 @@ export class StoreService {
      */
     private constructor() {
         this.autoDriveService = AutoDriveService.getInstance();
-        this.openAIService = OpenAIService.getInstance();
+        this.embeddingService = EmbeddingService.getInstance(modelConfig.type, modelConfig.config);
         this.chromaService = ChromaService.getInstance();
 
         // Ensure all data directories exist
@@ -202,7 +203,7 @@ export class StoreService {
             await this.db.write();
 
             // Generate and store embedding
-            const embedding = await this.openAIService.generateEmbedding(note.content);
+            const embedding = await this.embeddingService.createEmbedding(note.content);
             await this.chromaService.addNote(userId, cid, embedding);
 
             this.updateCache(userId, cid, note);
@@ -292,7 +293,7 @@ export class StoreService {
         limit: number = 5
     ): Promise<Array<Note & { score: number }>> {
         try {
-            const queryEmbedding = await this.openAIService.generateEmbedding(query);
+            const queryEmbedding = await this.embeddingService.createEmbedding(query);
             const results = await this.chromaService.searchSimilar(userId, queryEmbedding, limit);
 
             const notes = await asyncPool(
