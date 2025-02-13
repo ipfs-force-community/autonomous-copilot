@@ -1,9 +1,13 @@
 import { Context } from "telegraf";
-import { ChatCompletionMessageParam, ConversationHistory, Note, Tool } from "../types";
+import {  Note, Tool } from "../types";
 import { AgentService } from "./agent";
-import { OpenAIService } from "./openai";
 import { StoreService } from "./store";
 import { logger } from "./tools";
+import { ChatMessage } from "../types/model";
+
+interface ConversationHistory {
+    [userId: number]: ChatMessage [];
+}
 
 /**
  * Service for handling Telegram bot message interactions
@@ -12,7 +16,6 @@ import { logger } from "./tools";
 export class MessageService {
     private static instance: MessageService;
     private storeService: StoreService;
-    private openAIService: OpenAIService;
     private conversationHistory: ConversationHistory = {};
     private readonly MAX_HISTORY_LENGTH = 10; // Maximum number of messages to keep in history
 
@@ -22,7 +25,6 @@ export class MessageService {
      */
     private constructor() {
         this.storeService = StoreService.getInstance();
-        this.openAIService = OpenAIService.getInstance();
     }
 
     /**
@@ -177,7 +179,7 @@ export class MessageService {
             }
             
             // Add the new message to the history
-            const messageParam :ChatCompletionMessageParam = {
+            const messageParam :ChatMessage = {
                 role: "user",
                 content: ctx.message.text
             };

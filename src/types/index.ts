@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { ChatMessage } from "./model";
 
 export interface NoteCache {
     note: Note;
@@ -30,11 +31,6 @@ export interface AutoDriveConfig {
     apiKey: string;
 }
 
-export interface OpenAIConfig {
-    apiKey: string;
-    baseUrl: string;
-    projectId: string;
-}
 
 export interface ChromaConfig {
     url: string;
@@ -63,12 +59,6 @@ export interface Tool {
         required: string[];
     };
     execute: (params: Record<string, any>) => Promise<string>;
-}
-
-export type ChatCompletionMessageParam = OpenAI.Chat.ChatCompletionMessageParam;
-
-export interface ConversationHistory {
-    [userId: number]: ChatCompletionMessageParam[];
 }
 
 export const TASK_COMPLETE_SIGNAL = "TASK_COMPLETE";
