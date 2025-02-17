@@ -1,16 +1,16 @@
-import { Context } from "telegraf";
-import {  Note, Tool } from "../types";
+import { BotContext } from "../types/bot";
+import { Note, Tool } from "../types";
 import { AgentService } from "./agent";
 import { StoreService } from "./store";
 import { logger } from "./tools";
 import { ChatMessage } from "../types/model";
 
 interface ConversationHistory {
-    [userId: number]: ChatMessage [];
+    [userId: number]: ChatMessage[];
 }
 
 /**
- * Service for handling Telegram bot message interactions
+ * Service for handling bot message interactions across different platforms
  * Creates a new Agent instance for each message
  */
 export class MessageService {
@@ -28,12 +28,24 @@ export class MessageService {
     }
 
     /**
+     * Returns the singleton instance of MessageService
+     * @returns MessageService instance
+     */
+    public static getInstance(): MessageService {
+        if (!MessageService.instance) {
+            MessageService.instance = new MessageService();
+
+        }
+        return MessageService.instance;
+    }
+
+    /**
      * Creates tools for a specific user's AgentService instance
-     * @param userId The Telegram user ID
-     * @param ctx The Telegram context for sending replies
+     * @param userId The user ID
+     * @param ctx The bot context for sending replies
      * @returns Array of tools configured for this user
      */
-    private createUserTools(userId: number, ctx: Context): Tool[] {
+    private createUserTools(userId: number, ctx: BotContext): Tool[] {
         return [
             {
                 name: "saveNote",
@@ -99,13 +111,13 @@ export class MessageService {
                 parameters: {
                     type: "object",
                     properties: {
-                        noteId: { type: "string" }
+                        cid: { type: "string" }
                     },
-                    required: ["noteId"]
+                    required: ["cid"]
                 },
                 execute: async (params) => {
-                    const { noteId } = params;
-                    const note = await this.storeService.getNote(userId, noteId);
+                    const { cid } = params;
+                    const note = await this.storeService.getNote(userId, cid);
                     return note ? JSON.stringify(note) : "Note not found";
                 }
             },
@@ -123,9 +135,7 @@ export class MessageService {
                     const { message } = params;
                     // replace \\n with \n and ensure message is a string
                     const formattedMessage = String(message).replace(/\\n/g, "\n");
-                    await ctx.reply(formattedMessage, {
-                        parse_mode: "Markdown"
-                    });
+                    await ctx.reply(formattedMessage);
                     return formattedMessage;
                 }
             }
@@ -133,38 +143,28 @@ export class MessageService {
     }
 
     /**
-     * Returns the singleton instance of MessageService
-     * @returns MessageService instance
+     * Handle the /start command by sending a welcome message
+     * @param ctx Bot context containing user information
      */
-    public static getInstance(): MessageService {
-        if (!MessageService.instance) {
-            MessageService.instance = new MessageService();
-
-        }
-        return MessageService.instance;
+    public async handleStart(ctx: BotContext): Promise<void> {
+        const userName = ctx.message.user.username;
+        const welcomeMessage = `Hello *${userName}*\\!\n\nAI communication assistant, the AI agent will decide whether to save the content to the autonomys network or not\\.`
+        await ctx.reply(welcomeMessage);
     }
 
     /**
      * Handle all text messages by creating a new Agent instance
      * Each message gets its own Agent instance that is disposed after use
-     * @param ctx Telegram context containing message and user information
+     * @param ctx Bot context containing message and user information
      * @throws Error if message processing fails
      */
-    public async handleTextMessage(ctx: Context): Promise<void> {
-        if (!ctx.message || !("text" in ctx.message)) {
-            await ctx.reply("Invalid message format");
-            return;
-        }
+    public async handleTextMessage(ctx: BotContext): Promise<void> {
+        const userId = ctx.message.user.id;
+        const userName = ctx.message.user.username;
+        const messageText = ctx.message.text;
 
-        const userId = ctx.from?.id;
-        if (!userId) {
-            await ctx.reply("User ID not found");
-            return;
-        }
 
         try {
-            // Create a new agent instance for this message
-            const userName = ctx.from?.first_name || "User";
             const agent = new AgentService(this.createUserTools(userId, ctx), userName);
 
             // initialize conversation history
@@ -177,14 +177,13 @@ export class MessageService {
                 // Remove the oldest message
                 this.conversationHistory[userId].shift();
             }
-            
+
             // Add the new message to the history
             const messageParam :ChatMessage = {
                 role: "user",
                 content: ctx.message.text
             };
             this.conversationHistory[userId].push(messageParam);
-            
 
             // Process the message using conversation history
             await agent.chat(this.conversationHistory[userId]);
@@ -192,17 +191,5 @@ export class MessageService {
             logger.error('MessageService', 'Error handling message:', error);
             await ctx.reply('Sorry, I encountered an error while processing your message. Please try again later.');
         }
-    }
-
-
-    /**
-     * Handle the /start command by sending a welcome message
-     * @param ctx Telegram context containing user information
-     */
-    public async handleStart(ctx: Context): Promise<void> {
-        const userName = ctx.from?.first_name || "User";
-        await ctx.replyWithMarkdownV2(
-            `Hello *${userName}*\\!\n\nAI communication assistant, the AI agent will decide whether to save the content to the autonomys network or not\\.`
-        );
     }
 }
