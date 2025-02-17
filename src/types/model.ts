@@ -9,7 +9,22 @@ export interface ModelConfig {
     model?: string;
 }
 
-export type ModelType = 'openai' | 'anthropic' | 'google';
+export type ModelType = 'openai' | 'anthropic' | 'google' | 'secretai';
+
+export interface ModuleConfig {
+    chat: {
+        type: ModelType;
+        config: ModelConfig;
+    };
+    embedding: {
+        type: ModelType;
+        config: ModelConfig;
+    };
+    summarize: {
+        type: ModelType;
+        config: ModelConfig;
+    };
+}
 
 export interface ChatModel {
     chat(messages: ChatMessage[]): Promise<string>;
