@@ -63,7 +63,7 @@ export class StoreService {
      */
     private constructor() {
         this.autoDriveService = AutoDriveService.getInstance();
-        this.embeddingService = EmbeddingService.getInstance(modelConfig.type, modelConfig.config);
+        this.embeddingService = EmbeddingService.getInstance(modelConfig.embedding.type, modelConfig.embedding.config);
         this.chromaService = ChromaService.getInstance();
 
         // Ensure all data directories exist

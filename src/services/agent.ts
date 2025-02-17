@@ -27,7 +27,7 @@ export class AgentService {
             execute: async () => TASK_COMPLETE_SIGNAL
         };
 
-        this.chatService = ChatService.getInstance(modelConfig.type, modelConfig.config);
+        this.chatService = ChatService.getInstance(modelConfig.chat.type, modelConfig.chat.config);
         this.tools = [...tools, completeTool];
         this.toolMap = new Map(this.tools.map(tool => [tool.name, tool]));
         this.userName = userName;
