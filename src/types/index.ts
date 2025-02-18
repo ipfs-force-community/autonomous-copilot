@@ -24,7 +24,12 @@ export interface Store {
 }
 
 export interface BotConfig {
-    token: string;
+    telegram?: {
+        token: string;
+    };
+    discord?: {
+        token: string;
+    };
 }
 
 export interface AutoDriveConfig {
