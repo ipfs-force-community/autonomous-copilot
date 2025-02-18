@@ -64,19 +64,15 @@ export class TelegramBot {
     public async start(): Promise<void> {
         try {
             await this.bot.launch();
-            console.log('Telegram bot is running...');
-            
-            // Enable graceful stop
-            process.once('SIGINT', () => this.stop('SIGINT'));
-            process.once('SIGTERM', () => this.stop('SIGTERM'));
+            console.log('Telegram bot is starting...');
         } catch (error) {
             console.error('Error starting Telegram bot:', error);
             throw error;
         }
     }
 
-    public async stop(signal: string): Promise<void> {
-        console.log(`Received ${signal}, stopping Telegram bot...`);
-        await this.bot.stop(signal);
+    public async stop(): Promise<void> {
+        console.log('Stopping Telegram bot...');
+        this.bot.stop();
     }
 }
