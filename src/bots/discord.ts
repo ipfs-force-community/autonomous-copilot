@@ -1,6 +1,9 @@
 import { Client, Events, GatewayIntentBits, Message, Partials } from 'discord.js';
 import { BotContext } from '../types/bot';
 import { MessageService } from '../services/message';
+import { Logger } from '../services/tools';
+
+var logger = new Logger('DiscordBot');
 
 export class DiscordBot {
     private client: Client;
@@ -43,7 +46,7 @@ export class DiscordBot {
             message: {
                 text: message.content,
                 user: {
-                    id: parseInt(message.author.id),  // Discord uses snowflake IDs (strings), convert to number
+                    id: message.author.id,  // Discord uses snowflake IDs which are strings
                     username: message.author.username
                 }
             },
@@ -67,6 +70,8 @@ export class DiscordBot {
         this.client.on(Events.MessageCreate, async message => {
             // Ignore messages from bots
             if (message.author.bot) return;
+
+            logger.debug(`Received message ${message.content}`, message.author);
 
             try {
                 const botContext = this.createContext(message);

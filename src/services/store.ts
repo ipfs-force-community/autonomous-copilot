@@ -1,6 +1,6 @@
 import { Low } from 'lowdb';
 import { JSONFile } from 'lowdb/node';
-import { Store, Cache, Note, NoteMeta, NoteMetaWithCid } from '../types/index';
+import { Store, Cache, Note, NoteMeta, NoteMetaWithCid, UserId } from '../types/index';
 import { AutoDriveService } from './auto_drive';
 import { ChromaService } from './chroma';
 import path from 'path';
@@ -100,7 +100,7 @@ export class StoreService {
      * Initialize cache for a specific user if it doesn't exist
      * @param userId Telegram user ID
      */
-    private initializeUserCache(userId: number): void {
+    private initializeUserCache(userId: UserId): void {
         if (!this.cache[userId]) {
             this.cache[userId] = {
                 notes: new Map(),
@@ -115,7 +115,7 @@ export class StoreService {
      * @param cid Content identifier from auto drive
      * @param note Note data containing content and optional title
      */
-    private updateCache(userId: number, cid: string, note: Note): void {
+    private updateCache(userId: UserId, cid: string, note: Note): void {
         this.initializeUserCache(userId);
         const userCache = this.cache[userId].notes;
 
@@ -148,7 +148,7 @@ export class StoreService {
      * @param cid Content identifier from auto drive
      * @returns Note object if found, null otherwise
      */
-    private async getNoteWithCache(userId: number, cid: string): Promise<Note | null> {
+    private async getNoteWithCache(userId: UserId, cid: string): Promise<Note | null> {
         const userCache = this.cache[userId]?.notes;
         const cached = userCache?.get(cid);
 
@@ -177,12 +177,10 @@ export class StoreService {
      * Add a new note to storage and cache
      * Also generates and stores embedding in Chroma
      * @param userId Telegram user ID
-     * @param content Note content
-     * @param title Optional note title
-     * @param tags Optional tags for the note
+     * @param note Note data
      * @returns Content identifier if successful, null otherwise
      */
-    public async addNote(userId: number, note: Note): Promise<string | null> {
+    public async addNote(userId: UserId, note: Note): Promise<string | null> {
         try {
             const cid = await this.autoDriveService.uploadText(JSON.stringify(note), `${note.title}.json`);
             if (!cid) return null;
@@ -220,7 +218,7 @@ export class StoreService {
      * @param cid Content identifier from auto drive
      * @returns Note object if found, null otherwise
      */
-    public async getNote(userId: number, cid: string): Promise<Note | null> {
+    public async getNote(userId: UserId, cid: string): Promise<Note | null> {
         return this.getNoteWithCache(userId, cid);
     }
 
@@ -231,7 +229,7 @@ export class StoreService {
      * @param userId Telegram user ID
      * @returns Array of Note objects
      */
-    public async getUserNotes(userId: number): Promise<Note[]> {
+    public async getUserNotes(userId: UserId): Promise<Note[]> {
         await this.db.read();
         const userStore = this.db.data!.store[userId];
         if (!userStore) return [];
@@ -251,7 +249,7 @@ export class StoreService {
      * @param tag Tag to filter by
      * @returns Array of NoteMeta objects with their corresponding cids
      */
-    public async listUserNotesByTag(userId: number, tag: string): Promise<NoteMetaWithCid[]> {
+    public async listUserNotesByTag(userId: UserId, tag: string): Promise<NoteMetaWithCid[]> {
         await this.db.read();
         const userStore = this.db.data!.store[userId];
         if (!userStore) return [];
@@ -269,7 +267,7 @@ export class StoreService {
      * @param userId Telegram user ID
      * @returns Array of NoteMeta objects with their corresponding cids
      */
-    public async listUserNotes(userId: number): Promise<NoteMetaWithCid[]> {
+    public async listUserNotes(userId: UserId): Promise<NoteMetaWithCid[]> {
         await this.db.read();
         const userStore = this.db.data!.store[userId];
         if (!userStore) return [];
@@ -288,7 +286,7 @@ export class StoreService {
      * @returns Array of similar notes with their scores
      */
     public async searchSimilarNotes(
-        userId: number,
+        userId: UserId,
         query: string,
         limit: number = 5
     ): Promise<Array<Note & { score: number }>> {
@@ -318,7 +316,7 @@ export class StoreService {
      * Clear the cache for a specific user or all users
      * @param userId Optional Telegram user ID
      */
-    public clearCache(userId?: number): void {
+    public clearCache(userId?: UserId): void {
         if (userId) {
             delete this.cache[userId];
         } else {
@@ -330,7 +328,7 @@ export class StoreService {
      * Clear user data from both cache and vector database
      * @param userId Optional Telegram user ID
      */
-    public async clearUserData(userId?: number): Promise<void> {
+    public async clearUserData(userId?: UserId): Promise<void> {
         if (userId) {
             this.clearCache(userId);
             await this.chromaService.deleteUserNotes(userId);
@@ -345,7 +343,7 @@ export class StoreService {
      * @param userId Telegram user ID
      * @returns Cache statistics object or null if user not found
      */
-    public getCacheStats(userId: number): { size: number; lastUpdated: number } | null {
+    public getCacheStats(userId: UserId): { size: number; lastUpdated: number } | null {
         const userCache = this.cache[userId];
         if (!userCache) return null;
 

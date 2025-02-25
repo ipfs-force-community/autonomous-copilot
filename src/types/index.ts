@@ -11,8 +11,10 @@ export interface UserCache {
     lastUpdated: number;
 }
 
+export type UserId = string;
+
 export interface Cache {
-    [userId: number]: UserCache;
+    [userId: UserId]: UserCache;
 }
 
 export interface UserStore {
@@ -20,7 +22,7 @@ export interface UserStore {
 }
 
 export interface Store {
-    [userId: number]: UserStore;
+    [userId: UserId]: UserStore;
 }
 
 export interface BotConfig {
@@ -35,7 +37,6 @@ export interface BotConfig {
 export interface AutoDriveConfig {
     apiKey: string;
 }
-
 
 export interface ChromaConfig {
     url: string;

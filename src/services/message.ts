@@ -2,11 +2,14 @@ import { BotContext } from "../types/bot";
 import { Note, Tool } from "../types";
 import { AgentService } from "./agent";
 import { StoreService } from "./store";
-import { logger } from "./tools";
+import { UserId } from "../types/index";
+import { Logger } from "./tools";
 import { ChatMessage } from "../types/model";
 
+var logger = new Logger('MessageService');
+
 interface ConversationHistory {
-    [userId: number]: ChatMessage[];
+    [userId: UserId]: ChatMessage[];
 }
 
 /**
@@ -45,7 +48,7 @@ export class MessageService {
      * @param ctx The bot context for sending replies
      * @returns Array of tools configured for this user
      */
-    private createUserTools(userId: number, ctx: BotContext): Tool[] {
+    private createUserTools(userId: UserId, ctx: BotContext): Tool[] {
         return [
             {
                 name: "saveNote",
@@ -61,7 +64,7 @@ export class MessageService {
                 },
                 execute: async (params) => {
                     const { title, content, tags } = params;
-                    let note :Note = {
+                    let note: Note = {
                         title,
                         content,
                         tags,
@@ -83,7 +86,7 @@ export class MessageService {
                 },
                 execute: async (params) => {
                     const { tag } = params;
-                    const notes = tag 
+                    const notes = tag
                         ? await this.storeService.listUserNotesByTag(userId, tag)
                         : await this.storeService.listUserNotes(userId);
                     return JSON.stringify(notes);
@@ -171,15 +174,15 @@ export class MessageService {
             if (!this.conversationHistory[userId]) {
                 this.conversationHistory[userId] = [];
             }
-            
+
             // Limit history length by removing older messages (keeping system message)
-            if (this.conversationHistory[userId].length > this.MAX_HISTORY_LENGTH ) {
+            if (this.conversationHistory[userId].length > this.MAX_HISTORY_LENGTH) {
                 // Remove the oldest message
                 this.conversationHistory[userId].shift();
             }
 
             // Add the new message to the history
-            const messageParam :ChatMessage = {
+            const messageParam: ChatMessage = {
                 role: "user",
                 content: ctx.message.text
             };
@@ -188,7 +191,7 @@ export class MessageService {
             // Process the message using conversation history
             await agent.chat(this.conversationHistory[userId]);
         } catch (error) {
-            logger.error('MessageService', 'Error handling message:', error);
+            logger.error('Error handling message:', error);
             await ctx.reply('Sorry, I encountered an error while processing your message. Please try again later.');
         }
     }

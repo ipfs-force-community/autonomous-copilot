@@ -1,10 +1,13 @@
 import { ChromaService } from '../services/chroma';
-import { OpenAIService } from '../services/openai';
+import { EmbeddingService } from '../services/embedding';
+import { UserId } from '../types/index';
+import { modelConfig } from '../config';
+
 
 describe('ChromaService', () => {
     let chromaService: ChromaService;
-    let openAIService: OpenAIService;
-    const userId = 12345;
+    let embeddingService: EmbeddingService;
+    const userId: UserId = "12345";
     const testMessages = [
         { content: 'Hello world', cid: '1' },
         { content: 'This is a test message', cid: '2' },
@@ -15,13 +18,13 @@ describe('ChromaService', () => {
 
     beforeAll(async () => {
         chromaService = ChromaService.getInstance();
-        openAIService = OpenAIService.getInstance();
+        embeddingService = EmbeddingService.getInstance(modelConfig.embedding.type, modelConfig.embedding.config);
         // Generate all embeddings before tests
         for (const msg of testMessages) {
-            const embedding = await openAIService.generateEmbedding(msg.content);
+            const embedding = await embeddingService.createEmbedding(msg.content);
             testEmbeddings.push(embedding);
         }
-    } , 15000);
+    }, 15000);
 
     describe('Collection Management', () => {
         it('should create a new collection for user', async () => {
@@ -69,14 +72,14 @@ describe('ChromaService', () => {
             }
 
             // Search for similar messages to "world"
-            const queryEmbedding = await openAIService.generateEmbedding('world');
+            const queryEmbedding = await embeddingService.createEmbedding('world');
             const results = await chromaService.searchSimilar(userId, queryEmbedding, 2);
 
             // Verify results
             expect(results).toHaveLength(2);
             expect(results[0]).toHaveProperty('cid');
             expect(results[0]).toHaveProperty('score');
-            
+
             // First result should be most similar (lowest distance)
             expect(results[0].score).toBeLessThanOrEqual(results[1].score);
         });
@@ -84,8 +87,8 @@ describe('ChromaService', () => {
 
     describe('Error Handling', () => {
         it('should handle non-existent collection gracefully', async () => {
-            const nonExistentUserId = 99999;
-            const queryEmbedding = await openAIService.generateEmbedding('test');
+            const nonExistentUserId: UserId = "99999";
+            const queryEmbedding = await embeddingService.createEmbedding('test');
             const results = await chromaService.searchSimilar(nonExistentUserId, queryEmbedding);
             expect(results).toEqual([]);
         });
@@ -93,7 +96,7 @@ describe('ChromaService', () => {
         it('should handle empty collection search', async () => {
             await chromaService.deleteCollection(userId);
 
-            const queryEmbedding = await openAIService.generateEmbedding('test');
+            const queryEmbedding = await embeddingService.createEmbedding('test');
             const results = await chromaService.searchSimilar(userId, queryEmbedding);
             expect(results).toEqual([]);
         });

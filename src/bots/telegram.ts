@@ -28,7 +28,7 @@ export class TelegramBot {
             message: {
                 text: message.text,
                 user: {
-                    id: ctx.from.id,
+                    id: ctx.from.id.toString(),
                     username: ctx.from?.username || "User"
                 }
             },

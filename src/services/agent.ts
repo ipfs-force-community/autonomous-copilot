@@ -1,8 +1,10 @@
 import { ChatMessage } from '../types/model';
 import { modelConfig } from '../config';
 import { ChatService } from './chat';
-import { Tool,TASK_COMPLETE_SIGNAL} from '../types';
-import { logger } from './tools';
+import { Tool, TASK_COMPLETE_SIGNAL } from '../types';
+import { Logger } from './tools';
+
+var logger = new Logger('AgentService');
 
 interface ToolCall {
     toolName: string;
@@ -31,11 +33,11 @@ export class AgentService {
         this.tools = [...tools, completeTool];
         this.toolMap = new Map(this.tools.map(tool => [tool.name, tool]));
         this.userName = userName;
-        logger.info('AgentService', `Initialized with ${tools.length} tools: ${tools.map(t => t.name).join(', ')}`);
+        logger.info(`Initialized with ${tools.length} tools: ${tools.map(t => t.name).join(', ')}`);
     }
 
     private createAgentPrompt(): string {
-        logger.debug('AgentService', 'Creating agent prompt');
+        logger.debug('Creating agent prompt');
         const currentTime = new Date();
         const timeStr = currentTime.toLocaleString();
         return `You are an intelligent AI assistant specialized in managing ${this.userName}'s personal data and providing insightful responses. Current time is: ${timeStr}. Your dual role includes:
@@ -104,7 +106,6 @@ Remember: EVERY response must be a tool call. No direct text allowed.`;
     }
 
     private parseToolCalls(response: string): ToolCall[] {
-        logger.debug('AgentService', 'Parsing tool calls from response');
         const toolCalls: ToolCall[] = [];
         const regex = /<call>(\w+)\((.*?)\)<\/call>/g;
         let match;
@@ -132,8 +133,8 @@ Remember: EVERY response must be a tool call. No direct text allowed.`;
     }
 
     public async chat(messages: ChatMessage[]): Promise<void> {
-        logger.info('AgentService', `Starting chat with ${messages.length} messages`);
-        
+        logger.info(`Starting chat with ${messages.length} messages`);
+
         // Ensure system prompt is present and up to date
         if (messages[0]?.role !== 'system') {
             messages.unshift({ role: 'system', content: this.createAgentPrompt() });
@@ -143,28 +144,28 @@ Remember: EVERY response must be a tool call. No direct text allowed.`;
 
         try {
             const response = await this.chatService.chat(messages);
-            logger.debug('AgentService', 'Received response from OpenAI', response);
+            logger.debug('Received response from OpenAI', response, messages);
             messages.push({ role: "assistant", content: response });
-            
+
             // Parse and execute tool calls
             const toolCalls = this.parseToolCalls(response);
-            logger.debug('AgentService', `Found ${toolCalls.length} tool calls in response`);
+            logger.debug(`Found ${toolCalls.length} tool calls in response`);
             if (toolCalls.length > 0) {
                 // Execute all tool calls in sequence
                 for (const toolCall of toolCalls) {
                     const tool = this.toolMap.get(toolCall.toolName);
                     if (tool) {
-                        logger.debug('AgentService', `Processing tool call: ${toolCall.toolName}`);
+                        logger.debug(`Processing tool call: ${toolCall.toolName}`);
                         const result = await tool.execute(toolCall.params);
-                        logger.debug('AgentService', `${toolCall.toolName} execution result:`, result);
+                        logger.debug(`${toolCall.toolName} execution result:`, result);
                         // Check if task is complete
                         if (result === TASK_COMPLETE_SIGNAL) {
-                            logger.info('AgentService', 'Task complete signal received');
+                            logger.info('Task complete signal received');
                             return;
                         }
                         // Add tool response to message history
-                        messages.push({ 
-                            role: "system", 
+                        messages.push({
+                            role: "system",
                             content: JSON.stringify(result)
                         });
                     }
@@ -172,7 +173,7 @@ Remember: EVERY response must be a tool call. No direct text allowed.`;
                 await this.chat(messages);
             }
         } catch (error) {
-            logger.error('AgentService', 'Error in chat:', error);
+            logger.error('Error in chat:', error);
             throw error;
         }
     }

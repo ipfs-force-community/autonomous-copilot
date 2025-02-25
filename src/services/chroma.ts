@@ -1,5 +1,6 @@
 import { ChromaClient, Collection } from 'chromadb';
 import { chromaConfig } from '../config';
+import { UserId } from "../types/index";
 
 /**
  * Service for managing vector embeddings in Chroma database
@@ -7,7 +8,7 @@ import { chromaConfig } from '../config';
 export class ChromaService {
     private static instance: ChromaService;
     private client: ChromaClient;
-    private collections: Map<number, Collection> = new Map();
+    private collections: Map<UserId, Collection> = new Map();
 
     /**
      * Private constructor to enforce singleton pattern
@@ -35,12 +36,12 @@ export class ChromaService {
      * @param userId Telegram user ID
      * @returns Chroma collection instance
      */
-    public async getUserCollection(userId: number): Promise<Collection> {
+    public async getUserCollection(userId: UserId): Promise<Collection> {
         let collection = this.collections.get(userId);
         if (!collection) {
             collection = await this.client.getOrCreateCollection({
                 name: `user_${userId}`,
-                metadata: { userId: userId.toString() }
+                metadata: { userId }
             });
             this.collections.set(userId, collection);
         }
@@ -54,7 +55,7 @@ export class ChromaService {
      * @param embedding Vector embedding of the message
      */
     public async addNote(
-        userId: number,
+        userId: UserId,
         cid: string,
         embedding: number[]
     ): Promise<void> {
@@ -73,7 +74,7 @@ export class ChromaService {
      * @returns Array of matching messages with their metadata
      */
     public async searchSimilar(
-        userId: number,
+        userId: UserId,
         queryEmbedding: number[],
         limit: number = 5
     ): Promise<Array<{
@@ -99,7 +100,7 @@ export class ChromaService {
      * @param userId Telegram user ID
      * @param cid Content identifier to delete
      */
-    public async deleteNote(userId: number, cid: string): Promise<void> {
+    public async deleteNote(userId: UserId, cid: string): Promise<void> {
         const collection = await this.getUserCollection(userId);
         await collection.delete({
             ids: [cid]
@@ -110,7 +111,7 @@ export class ChromaService {
      * Delete all messages for a specific user
      * @param userId Telegram user ID
      */
-    public async deleteUserNotes(userId: number): Promise<void> {
+    public async deleteUserNotes(userId: UserId): Promise<void> {
         const collection = await this.getUserCollection(userId);
         await collection.delete({
             where: {}
@@ -121,7 +122,7 @@ export class ChromaService {
      * Delete a collection for a specific user
      * @param userId Telegram user ID
      */
-    public async deleteCollection(userId: number): Promise<void> {
+    public async deleteCollection(userId: UserId): Promise<void> {
         const collectionName = `user_${userId}`;
         await this.client.deleteCollection({
             name: collectionName
