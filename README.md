@@ -10,7 +10,9 @@ Autonomous Copilot also provides an SDK and API for developers, allowing them to
 
 - **AI-powered Personal Assistant**: Utilizes natural language processing to interact with users seamlessly.
 - **Decentralized Data Storage**: Ensures data ownership and availability with Auto-Drive technology.
+- **Secret AI Support**: Users can choose LLM from Secret Network to protect their privacy with advanced security measures.
 - **Telegram Integration**: Interact with the bot directly via [@autonomous_copilot_bot](https://t.me/autonomous_copilot_bot).
+- **Discord Integration**: Interact with the bot directly via Discord for seamless communication.
 
 ## Roadmap
 
@@ -29,6 +31,14 @@ While currently in the early stages, we have an ambitious vision for future feat
 - Flow to query user data for analysis
 
 ![query data](./doc/images/query.png)
+
+
+## Change Log
+
+- **February 27, 2025**
+   - Added support for the Discord platform, providing users with more options.
+   - Support Secret AI to enhance data privacy protection for users.
+
 
 ## Getting Started
 
@@ -68,21 +78,13 @@ Before you start, make sure you have the following:
 
    Follow the instructions from the [Chroma Cookbook](https://cookbook.chromadb.dev/core/install/).
 
-4. Create a `.env` file in the root directory with the following content:
+4. Create a `.env` file in the root directory
 
-   ```bash
-   BOT_TOKEN=<your_telegram_bot_token>
-   AUTO_DRIVE_API_KEY=<your_auto_drive_api_key>
-   OPENAI_API_KEY=<your_openai_api_key>
-   OPENAI_PROJECT_ID=<your_openai_project_id>
-   ```
+```bash
+cp .env.example .env
+# Edit the .env file to configure the necessary services
+```
 
-   **Explanation:**
-
-   - **BOT_TOKEN**: Your Telegram Bot Token, which you can obtain from [@BotFather](https://t.me/BotFather).
-   - **AUTO_DRIVE_API_KEY**: API key for managing decentralized storage with Auto-Drive.
-   - **OPENAI_API_KEY**: Your OpenAI API key to integrate AI functionalities.
-   - **OPENAI_PROJECT_ID**: The ID of your OpenAI project to manage your resources.
 
 #### Running the Bot
 
