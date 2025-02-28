@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeAll } from '@jest/globals';
 import { ChatMessage } from '../types/model';
-import { AgentService } from '../services/agent';
+import { AgentService, parseToolCalls } from '../services/agent';
 import { Tool } from '../types';
 
 interface NoteMeta {
@@ -175,7 +175,7 @@ Instructions:
 4. Bake for 30-35 minutes`
                 }
             ];
-            
+
             await agentService.chat(messages);
 
             const createNoteTool = mockTools.find(t => t.name === 'saveNote');
@@ -193,7 +193,7 @@ Instructions:
             const messages: ChatMessage[] = [
                 { role: "user", content: "Show me my dessert recipes" }
             ];
-            
+
             await agentService.chat(messages);
 
             const listNotesTool = mockTools.find(t => t.name === "listNotes");
@@ -206,7 +206,7 @@ Instructions:
             const messages: ChatMessage[] = [
                 { role: "user", content: "Show me the chocolate cake recipe" }
             ];
-            
+
             await agentService.chat(messages);
 
             const listNotesTool = mockTools.find(t => t.name === "listNotes");
@@ -230,7 +230,7 @@ Instructions:
                 { role: "user", content: "Test command" },
                 { role: "assistant", content: '<call>nonexistentTool(param="value")</call>' }
             ];
-            
+
             await expect(agentService.chat(messages)).resolves.not.toThrow();
         }, 15000);
     });

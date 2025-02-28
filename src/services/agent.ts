@@ -105,32 +105,7 @@ WORKFLOW GUIDELINES:
 Remember: EVERY response must be a tool call. No direct text allowed.`;
     }
 
-    private parseToolCalls(response: string): ToolCall[] {
-        const toolCalls: ToolCall[] = [];
-        const regex = /<call>(\w+)\((.*?)\)<\/call>/g;
-        let match;
 
-        while ((match = regex.exec(response)) !== null) {
-            const toolName = match[1];
-            const paramsStr = match[2];
-            const params: Record<string, any> = {};
-
-            // Parse parameters
-            const paramMatches = paramsStr.matchAll(/(\w+)="([^"]*)"/g);
-            for (const [, key, value] of paramMatches) {
-                // Handle array parameters
-                if (value.includes(',')) {
-                    params[key] = value.split(',').map(v => v.trim());
-                } else {
-                    params[key] = value;
-                }
-            }
-
-            toolCalls.push({ toolName, params });
-        }
-
-        return toolCalls;
-    }
 
     public async chat(messages: ChatMessage[]): Promise<void> {
         logger.info(`Starting chat with ${messages.length} messages`);
@@ -143,21 +118,24 @@ Remember: EVERY response must be a tool call. No direct text allowed.`;
         }
 
         try {
+            const startTime = Date.now();
             const response = await this.chatService.chat(messages);
-            logger.debug('Received response from OpenAI', response, messages);
+            const endTime = Date.now();
+            logger.debug(`Received response from OpenAI in ${endTime - startTime}ms`, response, messages);
             messages.push({ role: "assistant", content: response });
 
             // Parse and execute tool calls
-            const toolCalls = this.parseToolCalls(response);
+            const toolCalls = parseToolCalls(response);
             logger.debug(`Found ${toolCalls.length} tool calls in response`);
             if (toolCalls.length > 0) {
                 // Execute all tool calls in sequence
                 for (const toolCall of toolCalls) {
                     const tool = this.toolMap.get(toolCall.toolName);
                     if (tool) {
-                        logger.debug(`Processing tool call: ${toolCall.toolName}`);
+                        const startTime = Date.now();
                         const result = await tool.execute(toolCall.params);
-                        logger.debug(`${toolCall.toolName} execution result:`, result);
+                        const endTime = Date.now();
+                        logger.debug(`${toolCall.toolName} execution complete in ${endTime - startTime}ms`, result);
                         // Check if task is complete
                         if (result === TASK_COMPLETE_SIGNAL) {
                             logger.info('Task complete signal received');
@@ -177,4 +155,32 @@ Remember: EVERY response must be a tool call. No direct text allowed.`;
             throw error;
         }
     }
+}
+
+
+export function parseToolCalls(response: string): ToolCall[] {
+    const toolCalls: ToolCall[] = [];
+    const regex = /<call>(\w+)\((.*?)\)<\/call>/g;
+    let match;
+
+    while ((match = regex.exec(response)) !== null) {
+        const toolName = match[1];
+        const paramsStr = match[2];
+        const params: Record<string, any> = {};
+
+        // Parse parameters
+        const paramMatches = paramsStr.matchAll(/(\w+)="([^"]*)"/g);
+        for (const [, key, value] of paramMatches) {
+            // Handle array parameters
+            if (value.includes(',')) {
+                params[key] = value.split(',').map(v => v.trim());
+            } else {
+                params[key] = value;
+            }
+        }
+
+        toolCalls.push({ toolName, params });
+    }
+
+    return toolCalls;
 }

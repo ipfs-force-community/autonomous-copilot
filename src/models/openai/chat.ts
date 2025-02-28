@@ -16,7 +16,7 @@ export class OpenAIChatModel extends BaseChatModel {
     async chat(messages: ChatMessage[]): Promise<string> {
         const params: OpenAI.Chat.ChatCompletionCreateParams = {
             messages: messages,
-            model: this.config.model || 'gpt-4',
+            model: this.config.model || 'gpt-4o-mini',
         };
 
         try {
