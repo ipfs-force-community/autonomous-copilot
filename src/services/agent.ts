@@ -1,8 +1,11 @@
 import { ChatMessage } from '../types/model';
 import { modelConfig } from '../config';
 import { ChatService } from './chat';
-import { Tool,TASK_COMPLETE_SIGNAL} from '../types';
-import { logger } from './tools';
+import { Tool, TASK_COMPLETE_SIGNAL } from '../types';
+import { Logger } from './tools';
+import { XMLParser } from 'fast-xml-parser';
+
+var logger = new Logger('AgentService');
 
 interface ToolCall {
     toolName: string;
@@ -31,11 +34,11 @@ export class AgentService {
         this.tools = [...tools, completeTool];
         this.toolMap = new Map(this.tools.map(tool => [tool.name, tool]));
         this.userName = userName;
-        logger.info('AgentService', `Initialized with ${tools.length} tools: ${tools.map(t => t.name).join(', ')}`);
+        logger.info(`Initialized with ${tools.length} tools: ${tools.map(t => t.name).join(', ')}`);
     }
 
     private createAgentPrompt(): string {
-        logger.debug('AgentService', 'Creating agent prompt');
+        logger.debug('Creating agent prompt');
         const currentTime = new Date();
         const timeStr = currentTime.toLocaleString();
         return `You are an intelligent AI assistant specialized in managing ${this.userName}'s personal data and providing insightful responses. Current time is: ${timeStr}. Your dual role includes:
@@ -61,11 +64,14 @@ Available Tools:
 ${this.tools.map(tool => `
 - ${tool.name}: ${tool.description}
   Required Parameters: ${tool.parameters.required.join(', ')}
-  Call Format: <call>${tool.name}(${tool.parameters.required.map(param => `${param}="value"`).join(', ')})</call>
+  Call Format:
+  <invoke name="${tool.name}">
+${tool.parameters.required.map(param => `    <parameter name="${param}">value</parameter>`).join('\n')}
+  </invoke>
 `).join('\n')}
 
 IMPORTANT RULES for using tools:
-1. ALWAYS use <call>...</call> tags when calling a tool
+1. ALWAYS use <invoke>...</invoke> tags when calling a tool
 2. ALWAYS include ALL required parameters
 3. ALWAYS use double quotes ("") for parameter values
 4. NEVER modify the tool names or parameter names
@@ -78,22 +84,26 @@ IMPORTANT RULES for using tools:
 11. When storing user data, maintain data integrity by preserving the original content exactly as provided - never modify or fabricate any part of user-provided information
 12. NEVER refer to tool names when speaking to the USER
 13. ALWAYS call the complete tool when you have finished handling the user's request and no further actions are needed
+14. When using tools that may take some time to process, proactively acknowledge the user's request and set appropriate expectations for response time
 
 WORKFLOW GUIDELINES:
 1. When user requests to save information:
    - Create a new note with appropriate title and content
    - Add relevant tags for better organization
-   - Use replyUser to confirm when the note is saved
+   - Inform user that note saving operation may take some time to process
+   - Use replyUser to confirm when the note is saved, and provide some basic metadata
    - Call complete when done
 
 2. When user asks to find information:
-   - List relevant notes using listNotes with appropriate tags
-   - View specific notes as needed
+   - Search for relevant notes using searchNotes with the user's query
+   - If specific tags are mentioned, use listNotes with those tags
+   - View detailed note contents using viewNote for the most relevant results
    - Analyze and synthesize information from multiple notes
    - Present comprehensive answers using replyUser
    - Call complete when done
 
 3. When answering questions:
+   - Inform user that It may take some time to gather all necessary information
    - Search through relevant notes for accurate information
    - Combine information from multiple sources when needed
    - Provide context and sources using replyUser
@@ -103,37 +113,11 @@ WORKFLOW GUIDELINES:
 Remember: EVERY response must be a tool call. No direct text allowed.`;
     }
 
-    private parseToolCalls(response: string): ToolCall[] {
-        logger.debug('AgentService', 'Parsing tool calls from response');
-        const toolCalls: ToolCall[] = [];
-        const regex = /<call>(\w+)\((.*?)\)<\/call>/g;
-        let match;
 
-        while ((match = regex.exec(response)) !== null) {
-            const toolName = match[1];
-            const paramsStr = match[2];
-            const params: Record<string, any> = {};
-
-            // Parse parameters
-            const paramMatches = paramsStr.matchAll(/(\w+)="([^"]*)"/g);
-            for (const [, key, value] of paramMatches) {
-                // Handle array parameters
-                if (value.includes(',')) {
-                    params[key] = value.split(',').map(v => v.trim());
-                } else {
-                    params[key] = value;
-                }
-            }
-
-            toolCalls.push({ toolName, params });
-        }
-
-        return toolCalls;
-    }
 
     public async chat(messages: ChatMessage[]): Promise<void> {
-        logger.info('AgentService', `Starting chat with ${messages.length} messages`);
-        
+        logger.info(`Starting chat with ${messages.length} messages`);
+
         // Ensure system prompt is present and up to date
         if (messages[0]?.role !== 'system') {
             messages.unshift({ role: 'system', content: this.createAgentPrompt() });
@@ -142,29 +126,32 @@ Remember: EVERY response must be a tool call. No direct text allowed.`;
         }
 
         try {
+            const startTime = Date.now();
             const response = await this.chatService.chat(messages);
-            logger.debug('AgentService', 'Received response from OpenAI', response);
+            const endTime = Date.now();
+            logger.debug(`Received response from OpenAI in ${endTime - startTime}ms`, response, messages);
             messages.push({ role: "assistant", content: response });
-            
+
             // Parse and execute tool calls
-            const toolCalls = this.parseToolCalls(response);
-            logger.debug('AgentService', `Found ${toolCalls.length} tool calls in response`);
+            const toolCalls = parseToolCalls(response);
+            logger.debug(`Found ${toolCalls.length} tool calls in response`);
             if (toolCalls.length > 0) {
                 // Execute all tool calls in sequence
                 for (const toolCall of toolCalls) {
                     const tool = this.toolMap.get(toolCall.toolName);
                     if (tool) {
-                        logger.debug('AgentService', `Processing tool call: ${toolCall.toolName}`);
+                        const startTime = Date.now();
                         const result = await tool.execute(toolCall.params);
-                        logger.debug('AgentService', `${toolCall.toolName} execution result:`, result);
+                        const endTime = Date.now();
+                        logger.debug(`${toolCall.toolName} execution complete in ${endTime - startTime}ms`, result);
                         // Check if task is complete
                         if (result === TASK_COMPLETE_SIGNAL) {
-                            logger.info('AgentService', 'Task complete signal received');
+                            logger.info('Task complete signal received');
                             return;
                         }
                         // Add tool response to message history
-                        messages.push({ 
-                            role: "system", 
+                        messages.push({
+                            role: "system",
                             content: JSON.stringify(result)
                         });
                     }
@@ -172,8 +159,52 @@ Remember: EVERY response must be a tool call. No direct text allowed.`;
                 await this.chat(messages);
             }
         } catch (error) {
-            logger.error('AgentService', 'Error in chat:', error);
+            logger.error('Error in chat:', error);
             throw error;
         }
     }
+}
+
+
+export function parseToolCalls(response: string): ToolCall[] {
+    const toolCalls: ToolCall[] = [];
+    const parser = new XMLParser({
+        ignoreAttributes: false,
+        attributeNamePrefix: "",
+        textNodeName: "value"
+    });
+
+
+   try {
+        const xmlContent = `<root>${response}</root>`;
+        const result = parser.parse(xmlContent);
+        
+        // Handle single invoke or multiple invokes
+        const invokes = Array.isArray(result.root.invoke) ? result.root.invoke : [result.root.invoke];
+
+        for (const invoke of invokes) {
+            if (!invoke) continue;
+            
+            const toolName = invoke.name;
+            const parameters = invoke.parameter;
+            const params: Record<string, any> = {};
+
+            // Handle single parameter or multiple parameters
+            if (Array.isArray(parameters)) {
+                for (const param of parameters) {
+                    if (param && param.name && param.value) {
+                        params[param.name] = param.value;
+                    }
+                }
+            } else if (parameters && parameters.name && parameters.value) {
+                params[parameters.name] = parameters.value;
+            }
+
+            toolCalls.push({ toolName, params });
+        }
+    } catch (error) {
+        console.error('Error parsing XML:', error);
+    }
+
+    return toolCalls;
 }

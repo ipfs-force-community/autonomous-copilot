@@ -1,5 +1,7 @@
+import { UserId } from "./index";
+
 export interface BotUser {
-    id: number;
+    id: UserId;
     username?: string;
 }
 

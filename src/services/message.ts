@@ -1,12 +1,15 @@
 import { BotContext } from "../types/bot";
-import { Note, Tool } from "../types";
+import { Note, NoteMetaWithCid, Tool } from "../types";
 import { AgentService } from "./agent";
 import { StoreService } from "./store";
-import { logger } from "./tools";
+import { UserId } from "../types/index";
+import { Logger } from "./tools";
 import { ChatMessage } from "../types/model";
 
+var logger = new Logger('MessageService');
+
 interface ConversationHistory {
-    [userId: number]: ChatMessage[];
+    [userId: UserId]: ChatMessage[];
 }
 
 /**
@@ -45,11 +48,11 @@ export class MessageService {
      * @param ctx The bot context for sending replies
      * @returns Array of tools configured for this user
      */
-    private createUserTools(userId: number, ctx: BotContext): Tool[] {
+    private createUserTools(userId: UserId, ctx: BotContext): Tool[] {
         return [
             {
                 name: "saveNote",
-                description: "Save a new note with content strictly from user input (NEVER modify or fabricate user's content). Title and tags can be intelligently generated based on the content. Returns the cid of the saved note.",
+                description: "Save a new note with content strictly from user input (NEVER modify or fabricate user's content). Title and tags can be intelligently generated based on the content. Returns the metadata of the saved note. This operation may take some time to process.",
                 parameters: {
                     type: "object",
                     properties: {
@@ -61,14 +64,18 @@ export class MessageService {
                 },
                 execute: async (params) => {
                     const { title, content, tags } = params;
-                    let note :Note = {
+                    let note: Note = {
                         title,
                         content,
                         tags,
                         createdAt: new Date().toISOString()
                     };
-                    const cid = await this.storeService.addNote(userId, note);
-                    return cid || "";
+                    const cid = await this.storeService.addNote(userId, note) || "";
+                    const metadata : NoteMetaWithCid = {
+                        cid,
+                        ...note
+                    };
+                    return JSON.stringify(metadata);
                 }
             },
             {
@@ -83,7 +90,7 @@ export class MessageService {
                 },
                 execute: async (params) => {
                     const { tag } = params;
-                    const notes = tag 
+                    const notes = tag
                         ? await this.storeService.listUserNotesByTag(userId, tag)
                         : await this.storeService.listUserNotes(userId);
                     return JSON.stringify(notes);
@@ -91,7 +98,7 @@ export class MessageService {
             },
             {
                 name: "searchNotes",
-                description: "Search for notes based on semantic similarity to the query text. Returns notes ranked by relevance.",
+                description: "Search for notes based on semantic similarity to the query text. Returns notes ranked by relevance. This operation may take some time to process.",
                 parameters: {
                     type: "object",
                     properties: {
@@ -107,7 +114,7 @@ export class MessageService {
             },
             {
                 name: "viewNote",
-                description: "View the complete content of a specific note by its cid",
+                description: "View the complete content of a specific note by its cid. This operation may take some time to process.",
                 parameters: {
                     type: "object",
                     properties: {
@@ -136,7 +143,7 @@ export class MessageService {
                     // replace \\n with \n and ensure message is a string
                     const formattedMessage = String(message).replace(/\\n/g, "\n");
                     await ctx.reply(formattedMessage);
-                    return formattedMessage;
+                    return "reply user success";
                 }
             }
         ];
@@ -148,7 +155,7 @@ export class MessageService {
      */
     public async handleStart(ctx: BotContext): Promise<void> {
         const userName = ctx.message.user.username;
-        const welcomeMessage = `Hello *${userName}*\\!\n\nAI communication assistant, the AI agent will decide whether to save the content to the autonomys network or not\\.`
+        const welcomeMessage = `Hello\!\n\nWelcome to your personal AI assistant\. I can help you store and retrieve information intelligently\. Feel free to share any content you'd like to save or ask me questions about previously stored information\. I'll analyze your requests and manage the data accordingly\!`
         await ctx.reply(welcomeMessage);
     }
 
@@ -171,15 +178,15 @@ export class MessageService {
             if (!this.conversationHistory[userId]) {
                 this.conversationHistory[userId] = [];
             }
-            
+
             // Limit history length by removing older messages (keeping system message)
-            if (this.conversationHistory[userId].length > this.MAX_HISTORY_LENGTH ) {
+            if (this.conversationHistory[userId].length > this.MAX_HISTORY_LENGTH) {
                 // Remove the oldest message
                 this.conversationHistory[userId].shift();
             }
 
             // Add the new message to the history
-            const messageParam :ChatMessage = {
+            const messageParam: ChatMessage = {
                 role: "user",
                 content: ctx.message.text
             };
@@ -188,7 +195,7 @@ export class MessageService {
             // Process the message using conversation history
             await agent.chat(this.conversationHistory[userId]);
         } catch (error) {
-            logger.error('MessageService', 'Error handling message:', error);
+            logger.error('Error handling message:', error);
             await ctx.reply('Sorry, I encountered an error while processing your message. Please try again later.');
         }
     }

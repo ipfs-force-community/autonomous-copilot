@@ -17,6 +17,10 @@ export class ChatService {
     }
 
     async chat(messages: ChatMessage[]): Promise<string> {
-        return await this.chatModel.chat(messages);
+        const reply = await this.chatModel.chat(messages);
+        // Recover special characters that might be escaped in the model's response
+        const formattedReply = reply
+            .replace(/\\([!"#$%&'()*+,\-./:;<=>?@[\]^_`{|}~])/g, '\\$1');
+        return formattedReply;
     }
 }
