@@ -167,12 +167,12 @@ export class MessageService {
      */
     public async handleTextMessage(ctx: BotContext): Promise<void> {
         const userId = ctx.message.user.id;
-        const userName = ctx.message.user.username;
         const messageText = ctx.message.text;
 
-
         try {
-            const agent = new AgentService(this.createUserTools(userId, ctx), userName);
+            // todo: this action only consist for 5s, retrigger it on other actions
+            ctx.sendAction('typing');
+            const agent = new AgentService(this.createUserTools(userId, ctx),  ctx.sendAction);
 
             // initialize conversation history
             if (!this.conversationHistory[userId]) {

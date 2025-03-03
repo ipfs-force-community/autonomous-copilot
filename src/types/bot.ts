@@ -13,5 +13,6 @@ export interface BotMessage {
 export interface BotContext {
     message: BotMessage;
     reply: (text: string) => Promise<void>;
+    sendAction: (action: string) => Promise<void>;
     platform: string;
 }

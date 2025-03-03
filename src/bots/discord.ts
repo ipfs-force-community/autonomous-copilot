@@ -56,6 +56,22 @@ export class DiscordBot {
                     allowedMentions: { repliedUser: true }
                 });
             },
+            sendAction: async (action: string) => {
+                // Discord doesn't have a direct equivalent to Telegram's sendChatAction
+                // But we can simulate "typing" if that's the requested action
+                if (action === 'typing') {
+                    // try {
+                    //     // Discord.js v14 使用 sendTyping() 方法
+                    //     if (message.channel.sendTyping) await message.channel.sendTyping();
+                    // } catch (error) {
+                    //     console.error('Error sending typing indicator:', error);
+                    //     // 错误处理：如果发送打字指示器失败，我们只是记录错误并继续
+                    // }
+
+                    // todo: implement sendTyping() in Discord.js v14
+                }
+                // Other actions are ignored in Discord as they don't have direct equivalents
+            },
             platform: "discord"
         };
     }

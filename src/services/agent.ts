@@ -16,9 +16,9 @@ export class AgentService {
     private chatService: ChatService;
     private tools: Tool[];
     private toolMap: Map<string, Tool>;
-    private userName: string;
+    private sendAction: (action: string) => Promise<void>;
 
-    constructor(tools: Tool[], userName: string = 'User') {
+    constructor(tools: Tool[], sendAction: (action: string) => Promise<void>) {
         const completeTool: Tool = {
             name: "complete",
             description: "Call this tool when you have completed the user's request and no further actions are needed",
@@ -33,8 +33,15 @@ export class AgentService {
         this.chatService = ChatService.getInstance(modelConfig.chat.type, modelConfig.chat.config);
         this.tools = [...tools, completeTool];
         this.toolMap = new Map(this.tools.map(tool => [tool.name, tool]));
-        this.userName = userName;
+        this.sendAction = sendAction;
         logger.info(`Initialized with ${tools.length} tools: ${tools.map(t => t.name).join(', ')}`);
+    }
+
+    private sendActionBackground(action: string) {
+        // 直接异步调用 sendAction，不等待结果
+        this.sendAction(action).catch(error => {
+            logger.error('Error sending action:', error);
+        });
     }
 
     private createAgentPrompt(): string {
@@ -126,6 +133,7 @@ Remember: EVERY response must be a tool call. No direct text allowed.`;
         }
 
         try {
+            
             const startTime = Date.now();
             const response = await this.chatService.chat(messages);
             const endTime = Date.now();
