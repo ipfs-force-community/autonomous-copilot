@@ -33,8 +33,18 @@ export class TelegramBot {
                 }
             },
             reply: async (text: string) => {
-                await ctx.reply(text, {
-                    parse_mode: "Markdown"
+
+                // ref to https://core.telegram.org/bots/api#markdownv2-style
+                // Any character with code between 1 and 126 inclusively can be escaped anywhere with a preceding '\' character, in which case it is treated as an ordinary character and not a part of the markup. This implies that '\' character usually must be escaped with a preceding '\' character.
+                // Inside pre and code entities, all '`' and '\' characters must be escaped with a preceding '\' character.
+                // Inside the (...) part of the inline link and custom emoji definition, all ')' and '\' must be escaped with a preceding '\' character.
+                // In all other places characters '_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!' must be escaped with the preceding character '\'.
+
+                // Escape special characters according to MarkdownV2 rules
+                const escapedText = text.replace(/([_*\[\]()~`>#\+\-=|{}.!\\])/g, '\\$1');
+
+                await ctx.reply(escapedText, {
+                    parse_mode: "MarkdownV2"
                 });
             },
             platform: "telegram"

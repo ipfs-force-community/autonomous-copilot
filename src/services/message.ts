@@ -1,5 +1,5 @@
 import { BotContext } from "../types/bot";
-import { Note, Tool } from "../types";
+import { Note, NoteMetaWithCid, Tool } from "../types";
 import { AgentService } from "./agent";
 import { StoreService } from "./store";
 import { UserId } from "../types/index";
@@ -52,7 +52,7 @@ export class MessageService {
         return [
             {
                 name: "saveNote",
-                description: "Save a new note with content strictly from user input (NEVER modify or fabricate user's content). Title and tags can be intelligently generated based on the content. Returns the cid of the saved note.",
+                description: "Save a new note with content strictly from user input (NEVER modify or fabricate user's content). Title and tags can be intelligently generated based on the content. Returns the metadata of the saved note. This operation may take some time to process.",
                 parameters: {
                     type: "object",
                     properties: {
@@ -70,8 +70,12 @@ export class MessageService {
                         tags,
                         createdAt: new Date().toISOString()
                     };
-                    const cid = await this.storeService.addNote(userId, note);
-                    return cid || "";
+                    const cid = await this.storeService.addNote(userId, note) || "";
+                    const metadata : NoteMetaWithCid = {
+                        cid,
+                        ...note
+                    };
+                    return JSON.stringify(metadata);
                 }
             },
             {
@@ -94,7 +98,7 @@ export class MessageService {
             },
             {
                 name: "searchNotes",
-                description: "Search for notes based on semantic similarity to the query text. Returns notes ranked by relevance.",
+                description: "Search for notes based on semantic similarity to the query text. Returns notes ranked by relevance. This operation may take some time to process.",
                 parameters: {
                     type: "object",
                     properties: {
@@ -110,7 +114,7 @@ export class MessageService {
             },
             {
                 name: "viewNote",
-                description: "View the complete content of a specific note by its cid",
+                description: "View the complete content of a specific note by its cid. This operation may take some time to process.",
                 parameters: {
                     type: "object",
                     properties: {
@@ -139,7 +143,7 @@ export class MessageService {
                     // replace \\n with \n and ensure message is a string
                     const formattedMessage = String(message).replace(/\\n/g, "\n");
                     await ctx.reply(formattedMessage);
-                    return formattedMessage;
+                    return "reply user success";
                 }
             }
         ];
@@ -151,7 +155,7 @@ export class MessageService {
      */
     public async handleStart(ctx: BotContext): Promise<void> {
         const userName = ctx.message.user.username;
-        const welcomeMessage = `Hello *${userName}*\\!\n\nAI communication assistant, the AI agent will decide whether to save the content to the autonomys network or not\\.`
+        const welcomeMessage = `Hello\!\n\nWelcome to your personal AI assistant\. I can help you store and retrieve information intelligently\. Feel free to share any content you'd like to save or ask me questions about previously stored information\. I'll analyze your requests and manage the data accordingly\!`
         await ctx.reply(welcomeMessage);
     }
 

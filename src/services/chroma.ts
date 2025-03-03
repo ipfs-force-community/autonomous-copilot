@@ -87,11 +87,14 @@ export class ChromaService {
             nResults: limit
         });
 
-        if (!results.ids.length) return [];
+        // only concern about the first result for now
+        const ids = results.ids?.[0] ?? [];
+        const distances = results.distances?.[0] ?? [];
+        const scores = distances.map(distance => 1 - distance);
 
-        return results.ids[0].map((id, index) => ({
+        return ids.map((id, index) => ({
             cid: id,
-            score: results.distances?.[0]?.[index] ?? 0
+            score: scores[index]
         }));
     }
 
