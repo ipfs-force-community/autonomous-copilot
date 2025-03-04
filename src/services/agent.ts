@@ -79,45 +79,41 @@ ${tool.parameters.required.map(param => `    <parameter name="${param}">value</p
 
 IMPORTANT RULES for using tools:
 1. ALWAYS use <invoke>...</invoke> tags when calling a tool
-2. ALWAYS include ALL required parameters
-3. ALWAYS use double quotes ("") for parameter values
-4. NEVER modify the tool names or parameter names
-5. NEVER skip required parameters
-6. If a tool call fails, explain why and retry with corrected parameters
-7. Only use tools that are explicitly provided in the list above
-8. NEVER make up fake responses or tool results
-9. NEVER write direct text responses - everything must be a tool call
-10. Use replyUser for ALL communication with the user
-11. When storing user data, maintain data integrity by preserving the original content exactly as provided - never modify or fabricate any part of user-provided information
-12. NEVER refer to tool names when speaking to the USER
-13. ALWAYS call the complete tool when you have finished handling the user's request and no further actions are needed
-14. When using tools that may take some time to process, proactively acknowledge the user's request and set appropriate expectations for response time
+2. ALWAYS include ALL required parameters, never skip required parameters
+3. NEVER modify the tool names or parameter names
+4. If a tool call fails, explain why and retry with corrected parameters
+5. Only use tools that are explicitly provided in the list above
+6. NEVER make up fake responses or tool results
+7. NEVER write direct text responses - everything must be a tool call
+8. Use replyUser or reassureUser for ALL communication with the user
+9. When storing user data, maintain data integrity by preserving the original content exactly as provided - never modify or fabricate any part of user-provided information
+10. NEVER refer to tool names when speaking to the USER
+11. ALWAYS call the complete tool when you have finished handling the user's request and no further actions are needed
+12. You can initiate multiple tool calls simultaneously - when appropriate, batch related operations together rather than executing them one by one
 
-WORKFLOW GUIDELINES:
-1. When user requests to save information:
-   - Create a new note with appropriate title and content
-   - Add relevant tags for better organization
-   - Inform user that note saving operation may take some time to process
-   - Use replyUser to confirm when the note is saved, and provide some basic metadata
-   - Call complete when done
+COMMUNICATION PRINCIPLES:
+1. ALWAYS acknowledge the user's request immediately using reassureUser before starting any other operations ( tool call )
+2. Provide regular progress updates during long-running operations to avoid leaving users waiting without explanation
+3. Clearly explain your intent before starting complex operations
+4. Confirm completion of tasks and summarize results when finished
 
-2. When user asks to find information:
-   - Search for relevant notes using searchNotes with the user's query
-   - If specific tags are mentioned, use listNotes with those tags
-   - View detailed note contents using viewNote for the most relevant results
-   - Analyze and synthesize information from multiple notes
-   - Present comprehensive answers using replyUser
-   - Call complete when done
+TASK HANDLING PRINCIPLES:
+1. For saving information:
+   - Reassure the user about the action
+   - Generate appropriate titles and tags based on content
+   - Confirm successful storage with metadata
+   
+2. For answering questions:
+   - Use semantic search (searchNotes) for natural language queries
+   - Gather information from all relevant stored notes
+   - Synthesize information from multiple sources
+   - Provide context and sources in your answers
+   - Suggest related information when appropriate
 
-3. When answering questions:
-   - Inform user that It may take some time to gather all necessary information
-   - Search through relevant notes for accurate information
-   - Combine information from multiple sources when needed
-   - Provide context and sources using replyUser
-   - Suggest related information using replyUser
-   - Call complete when done
+3. For user view note
+   - If user intends to view a specific note, you can use the sendNote tool to send the content directly to the user, rather than view and reply
 
-Remember: EVERY response must be a tool call. No direct text allowed.`;
+Remember: EVERY response must be a tool call. No direct text allowed. Always communicate your intent and progress to the user before and during tool calls to avoid leaving them waiting without explanation.`;
     }
 
 
@@ -144,26 +140,56 @@ Remember: EVERY response must be a tool call. No direct text allowed.`;
             const toolCalls = parseToolCalls(response);
             logger.debug(`Found ${toolCalls.length} tool calls in response`);
             if (toolCalls.length > 0) {
-                // Execute all tool calls in sequence
-                for (const toolCall of toolCalls) {
+                // Execute all tool calls concurrently
+                const toolPromises = toolCalls.map(async toolCall => {
                     const tool = this.toolMap.get(toolCall.toolName);
-                    if (tool) {
-                        const startTime = Date.now();
+                    if (!tool) return null;
+                    
+                    const startTime = Date.now();
+                    try {
                         const result = await tool.execute(toolCall.params);
                         const endTime = Date.now();
                         logger.debug(`${toolCall.toolName} execution complete in ${endTime - startTime}ms`, result);
-                        // Check if task is complete
-                        if (result === TASK_COMPLETE_SIGNAL) {
-                            logger.info('Task complete signal received');
-                            return;
-                        }
-                        // Add tool response to message history
-                        messages.push({
-                            role: "system",
-                            content: JSON.stringify(result)
-                        });
+                        
+                        return { 
+                            toolCall, 
+                            result, 
+                            isComplete: result === TASK_COMPLETE_SIGNAL 
+                        };
+                    } catch (error) {
+                        logger.error(`Error executing tool ${toolCall.toolName}:`, error);
+                        return { 
+                            toolCall, 
+                            result: `Error: ${error}`, 
+                            isComplete: false 
+                        };
                     }
+                });
+                
+                const results = await Promise.all(toolPromises);
+                
+                // Process results in the original order
+                let isTaskComplete = false;
+                for (const result of results) {
+                    if (!result) continue;
+                    
+                    if (result.isComplete) {
+                        logger.info('Task complete signal received');
+                        isTaskComplete = true;
+                        break;
+                    }
+                    
+                    // Add tool response to message history
+                    messages.push({
+                        role: "system",
+                        content: `Tool result from ${result.toolCall.toolName}: ${JSON.stringify(result.result)}`
+                    });
                 }
+                
+                if (isTaskComplete) {
+                    return;
+                }
+                
                 await this.chat(messages);
             }
         } catch (error) {

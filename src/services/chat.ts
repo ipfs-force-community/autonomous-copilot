@@ -19,8 +19,20 @@ export class ChatService {
     async chat(messages: ChatMessage[]): Promise<string> {
         const reply = await this.chatModel.chat(messages);
         // Recover special characters that might be escaped in the model's response
-        const formattedReply = reply
-            .replace(/\\([!"#$%&'()*+,\-./:;<=>?@[\]^_`{|}~])/g, '\\$1');
-        return formattedReply;
+        return unescape(reply);
     }
+}
+
+function unescape(str: string): string {
+    return str.replace(/\\([n"!])/g, (match, p1) => {
+
+        // Map of special escape sequences
+        const escapeMap : {[key: string]: string} = {
+            'n': '\n',  // Convert \n to actual newline
+            '"': '"',   // Convert \" to "
+            '!': '!'    // Convert \! to !
+        };
+        
+        return escapeMap[p1] || p1;
+    });
 }

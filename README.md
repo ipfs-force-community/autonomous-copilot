@@ -40,6 +40,8 @@ While currently in the early stages, we have an ambitious vision for future feat
    - Support Secret AI to enhance data privacy protection for users.
 - **March 3, 2025**
    - Fixed an issue with Telegram bot handling special characters by implementing MarkdownV2 character escaping, ensuring message reply stability
+- **March 4, 2025**
+   - Optimized user experience by adding timely responses and feedback to improve user experience
 
 ## Getting Started
 

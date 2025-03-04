@@ -1,5 +1,5 @@
 import { BotContext } from "../types/bot";
-import { Note, NoteMetaWithCid, Tool } from "../types";
+import { Note, NoteMetaWithCid, Tool, NoteMeta } from "../types";
 import { AgentService } from "./agent";
 import { StoreService } from "./store";
 import { UserId } from "../types/index";
@@ -52,7 +52,7 @@ export class MessageService {
         return [
             {
                 name: "saveNote",
-                description: "Save a new note with content strictly from user input (NEVER modify or fabricate user's content). Title and tags can be intelligently generated based on the content. Returns the metadata of the saved note. This operation may take some time to process.",
+                description: "Save a new note with content strictly from user input (NEVER modify or fabricate user's content). Title and tags can be intelligently generated based on the content. Returns the metadata of the saved note. This operation may take a long time to process.",
                 parameters: {
                     type: "object",
                     properties: {
@@ -68,12 +68,14 @@ export class MessageService {
                         title,
                         content,
                         tags,
-                        createdAt: new Date().toISOString()
+                        createdAt: new Date().toISOString(),
                     };
                     const cid = await this.storeService.addNote(userId, note) || "";
                     const metadata : NoteMetaWithCid = {
                         cid,
-                        ...note
+                        title: note.title,
+                        tags: note.tags,
+                        createdAt: note.createdAt
                     };
                     return JSON.stringify(metadata);
                 }
@@ -140,12 +142,55 @@ export class MessageService {
                 },
                 execute: async (params) => {
                     const { message } = params;
-                    // replace \\n with \n and ensure message is a string
-                    const formattedMessage = String(message).replace(/\\n/g, "\n");
-                    await ctx.reply(formattedMessage);
+                    await ctx.reply(message);
                     return "reply user success";
                 }
+            },
+            {
+                name: "sendNote",
+                description: "Send a note to the user directly based on its cid.",
+                parameters: {
+                    type: "object",
+                    properties: {
+                        cid: { type: "string" }
+                    },
+                    required: ["cid"]
+                },
+                execute: async (params) => {
+                    const { cid } = params;
+                    const note = await this.storeService.getNote(userId, cid);
+                    if (!note) return "Note not found";
+                    
+                    const message = `Title: ${note.title}\nTags: ${note.tags}\nDate: ${note.createdAt}\nContent:\n\n ${note.content}`;
+                    const meta = {
+                        cid,
+                        title: note.title,
+                        tags: note.tags,
+                        createdAt: note.createdAt
+                    }
+                    await ctx.reply(message);
+                    return `send note to user success: ${meta} `;
+                }
+            },
+            {
+                name: "reassureUser",
+                description: "Reassure the user when operations might take a long time. Sends a message and shows a typing indicator to let them know the agent is working on their request.It could be used to acknowledge the user's intention or update the state of current task. Use this only when you are going to perform an operation.",
+                parameters: {
+                    type: "object",
+                    properties: {
+                        message: { type: "string" }
+                    },
+                    required: ["message"]
+                },
+                execute: async (params) => {
+                    const { message } = params;
+                    await ctx.reply(message);
+                    await ctx.sendAction('typing');
+                    return "User reassured with message and typing indicator";
+                }
             }
+            
+
         ];
     }
 
