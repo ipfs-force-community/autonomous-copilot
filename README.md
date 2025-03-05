@@ -1,10 +1,10 @@
 # **Autonomous Copilot: Autonomys Network's Intelligent Decision-Making Layer**
 
-**Autonomous Copilot** is an AI-powered data management and decision-making tool built on the Autonomys Network, designed to help users securely store fragmented data while making informed decisions. By leveraging the Autonomys Distributed Storage Network (DSN), Autonomous Copilot ensures long-term data persistence and efficient data processing.
+**Autonomous Copilot** is an AI-powered data management and decision-making agent built on the `Autonomys Network`, designed to help users securely store fragmented data while making informed decisions. By leveraging the Autonomys Distributed Storage Network (DSN), Autonomous Copilot ensures long-term data persistence and efficient data processing.
 
 With a powerful combination of AI agents and decentralized storage, Autonomous Copilot enables users to store, manage, and analyze data securely. Through an intuitive interface and seamless Telegram integration, users can access personalized AI services, improving decision-making and overall productivity.
 
-Autonomous Copilot also provides an SDK and API for developers, allowing them to integrate data management and AI-driven decision-making capabilities into their own applications.
+Supports `Secret AI` to protect user data privacy. Through Secret Network's encrypted computation technology, user data remains encrypted throughout the AI processing pipeline, achieving end-to-end privacy protection. Users can confidently utilize AI services without concerns about data leaks or misuse.
 
 ## Key Features
 
@@ -18,7 +18,11 @@ Autonomous Copilot also provides an SDK and API for developers, allowing them to
 
 While currently in the early stages, we have an ambitious vision for future features:
 
-- Enhanced integration with Large Language Models (LLMs) for more sophisticated AI capabilities.
+- Optimized Large Language Model (LLM) integration with expanded functionality:
+  - Web search integration for real-time information retrieval
+  - Intelligent task scheduling with priority management
+  - Customizable reminder system with natural language processing
+  - Enhanced semantic search across stored notes and web content
 - Multi-platform support, including Discord, Slack, and Web Interfaces.
 - Extended support for multimedia handling (images, videos, audio).
 
@@ -35,8 +39,9 @@ While currently in the early stages, we have an ambitious vision for future feat
 
 ## Change Log
 
-- **February 27, 2025**
+- **February 23, 2025**
    - Added support for the Discord platform, providing users with more options.
+- **February 27, 2025**
    - Support Secret AI to enhance data privacy protection for users.
 - **March 3, 2025**
    - Fixed an issue with Telegram bot handling special characters by implementing MarkdownV2 character escaping, ensuring message reply stability
