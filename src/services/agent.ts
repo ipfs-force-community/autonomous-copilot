@@ -48,7 +48,7 @@ export class AgentService {
         logger.debug('Creating agent prompt');
         const currentTime = new Date();
         const timeStr = currentTime.toLocaleString();
-        return `You are Autonomous Copilot, an intelligent AI assistant built on the Autonomys Network, designed to help users securely store fragmented data while making informed decisions. Current time is: ${timeStr}. All user data is permanently preserved on the Autonomys Network, ensuring long-term data persistence and security. Your capabilities include:
+        return `You are Fil Copilot, an intelligent AI assistant built on the Filecoin Network, designed to help users securely store fragmented data while making informed decisions. Current time is: ${timeStr}. All user data is permanently preserved on the Filecoin Network, ensuring long-term data persistence and security. Your capabilities include:
 
 1. Data Management:
    - Organizing and storing various types of data including:
@@ -129,7 +129,7 @@ Remember: EVERY response must be a tool call. No direct text allowed. Always com
         }
 
         try {
-            
+
             const startTime = Date.now();
             const response = await this.chatService.chat(messages);
             const endTime = Date.now();
@@ -144,52 +144,52 @@ Remember: EVERY response must be a tool call. No direct text allowed. Always com
                 const toolPromises = toolCalls.map(async toolCall => {
                     const tool = this.toolMap.get(toolCall.toolName);
                     if (!tool) return null;
-                    
+
                     const startTime = Date.now();
                     try {
                         const result = await tool.execute(toolCall.params);
                         const endTime = Date.now();
                         logger.debug(`${toolCall.toolName} execution complete in ${endTime - startTime}ms`, result);
-                        
-                        return { 
-                            toolCall, 
-                            result, 
-                            isComplete: result === TASK_COMPLETE_SIGNAL 
+
+                        return {
+                            toolCall,
+                            result,
+                            isComplete: result === TASK_COMPLETE_SIGNAL
                         };
                     } catch (error) {
                         logger.error(`Error executing tool ${toolCall.toolName}:`, error);
-                        return { 
-                            toolCall, 
-                            result: `Error: ${error}`, 
-                            isComplete: false 
+                        return {
+                            toolCall,
+                            result: `Error: ${error}`,
+                            isComplete: false
                         };
                     }
                 });
-                
+
                 const results = await Promise.all(toolPromises);
-                
+
                 // Process results in the original order
                 let isTaskComplete = false;
                 for (const result of results) {
                     if (!result) continue;
-                    
+
                     if (result.isComplete) {
                         logger.info('Task complete signal received');
                         isTaskComplete = true;
                         break;
                     }
-                    
+
                     // Add tool response to message history
                     messages.push({
                         role: "system",
                         content: `Tool result from ${result.toolCall.toolName}: ${JSON.stringify(result.result)}`
                     });
                 }
-                
+
                 if (isTaskComplete) {
                     return;
                 }
-                
+
                 await this.chat(messages);
             }
         } catch (error) {
@@ -209,16 +209,16 @@ export function parseToolCalls(response: string): ToolCall[] {
     });
 
 
-   try {
+    try {
         const xmlContent = `<root>${response}</root>`;
         const result = parser.parse(xmlContent);
-        
+
         // Handle single invoke or multiple invokes
         const invokes = Array.isArray(result.root.invoke) ? result.root.invoke : [result.root.invoke];
 
         for (const invoke of invokes) {
             if (!invoke) continue;
-            
+
             const toolName = invoke.name;
             const parameters = invoke.parameter;
             const params: Record<string, any> = {};

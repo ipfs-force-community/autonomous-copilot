@@ -34,8 +34,9 @@ export interface BotConfig {
     };
 }
 
-export interface AutoDriveConfig {
-    apiKey: string;
+export interface PdpConfig {
+    url: string;
+    token?: string;
 }
 
 export interface ChromaConfig {

@@ -1,17 +1,14 @@
-# **Autonomous Copilot: Autonomys Network's Intelligent Decision-Making Layer**
+# **Fil Copilot: An AI Assistant Base On Filecoin**
 
-**Autonomous Copilot** is an AI-powered data management and decision-making agent built on the `Autonomys Network`, designed to help users securely store fragmented data while making informed decisions. By leveraging the Autonomys Distributed Storage Network (DSN), Autonomous Copilot ensures long-term data persistence and efficient data processing.
+**Fil Copilot** is an AI-powered data management and decision-making agent built on the `Filecoin Network`, designed to help users securely store fragmented data while making informed decisions. By leveraging the Proof of Data Possession (PDP) protocol and Filecoin's decentralized storage capabilities, Fil Copilot ensures long-term data persistence and efficient data processing.
 
-With a powerful combination of AI agents and decentralized storage, Autonomous Copilot enables users to store, manage, and analyze data securely. Through an intuitive interface and seamless Telegram integration, users can access personalized AI services, improving decision-making and overall productivity.
-
-Supports `Secret AI` to protect user data privacy. Through Secret Network's encrypted computation technology, user data remains encrypted throughout the AI processing pipeline, achieving end-to-end privacy protection. Users can confidently utilize AI services without concerns about data leaks or misuse.
+With a powerful combination of AI agents and Filecoin's decentralized storage network, Fil Copilot enables users to store, manage, and analyze data securely. Through an intuitive interface and seamless Telegram integration, users can access personalized AI services, improving decision-making and overall productivity.
 
 ## Key Features
 
 - **AI-powered Personal Assistant**: Utilizes natural language processing to interact with users seamlessly.
-- **Decentralized Data Storage**: Ensures data ownership and availability with Auto-Drive technology.
-- **Secret AI Support**: Users can choose LLM from Secret Network to protect their privacy with advanced security measures.
-- **Telegram Integration**: Interact with the bot directly via [@autonomous_copilot_bot](https://t.me/autonomous_copilot_bot).
+- **Decentralized Data Storage**: Ensures data availability with Filecoin's Proof of Data Possession (PDP) technology.
+- **Telegram Integration**: Interact with the bot directly via [@fil_copilot_bot](https://t.me/fil_copilot_bot).
 - **Discord Integration**: Interact with the bot directly via Discord for seamless communication.
 
 ## Roadmap
@@ -23,8 +20,8 @@ While currently in the early stages, we have an ambitious vision for future feat
   - Intelligent task scheduling with priority management
   - Customizable reminder system with natural language processing
   - Enhanced semantic search across stored notes and web content
-- Multi-platform support, including Discord, Slack, and Web Interfaces.
-- Extended support for multimedia handling (images, videos, audio).
+- Multi-platform support, including Discord, Slack, and Web Interfaces
+- Extended support for multimedia handling (images, videos, audio)
 
 ## Structure
 
@@ -39,26 +36,26 @@ While currently in the early stages, we have an ambitious vision for future feat
 
 ## Change Log
 
-- **February 23, 2025**
+- **May 23, 2025**
    - Added support for the Discord platform, providing users with more options.
-- **February 27, 2025**
+- **May 29, 2025**
    - Support Secret AI to enhance data privacy protection for users.
-- **March 3, 2025**
+- **Jun 10, 2025**
    - Fixed an issue with Telegram bot handling special characters by implementing MarkdownV2 character escaping, ensuring message reply stability
-- **March 4, 2025**
+- **Jun 23, 2025**
    - Optimized user experience by adding timely responses and feedback to improve user experience
 
 ## Getting Started
 
 ### Using the Bot
 
-1. Start a chat with [@autonomous_copilot_bot](https://t.me/autonomous_copilot_bot) on Telegram.
+1. Start a chat with [@fil_copilot_bot](https://t.me/fil_copilot_bot) on Telegram.
 2. The bot will assist you with AI-powered services based on your stored data.
-3. Your data will be securely stored using **Auto-Drive** technology.
+3. Your data will be securely stored on the **Filecoin Network** via the Proof of Data Possession (PDP) protocol.
 
 ### Host the Bot by Yourself
 
-Follow the steps below to install and run Autonomous Copilot.
+Follow the steps below to install and run Fil Copilot.
 
 #### Prerequisites
 
@@ -66,14 +63,15 @@ Before you start, make sure you have the following:
 
 - **Node.js** (v16 or higher)
 - **npm**
+- **Access to a PDP server** for Filecoin storage integration
 
 #### Installation
 
 1. Clone the repository:
 
    ```bash
-   git clone https://github.com/ipfs-force-community/autonomous-copilot
-   cd autonomous-copilot
+   git clone https://github.com/ipfs-force-community/fil-copilot
+   cd fil-copilot
    ```
 
 2. Install project dependencies:

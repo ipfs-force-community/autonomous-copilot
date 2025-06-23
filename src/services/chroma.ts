@@ -51,7 +51,7 @@ export class ChromaService {
     /**
      * Add a message to the vector database
      * @param userId Telegram user ID
-     * @param cid Content identifier from auto-drive
+     * @param cid Content identifier
      * @param embedding Vector embedding of the message
      */
     public async addNote(

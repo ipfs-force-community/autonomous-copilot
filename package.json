@@ -13,7 +13,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@autonomys/auto-drive": "^1.2.1",
+    "axios": "^1.6.2",
     "chromadb": "^1.10.4",
     "discord.js": "^14.18.0",
     "dotenv": "^16.3.1",

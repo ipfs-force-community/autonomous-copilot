@@ -1,5 +1,5 @@
 import dotenv from 'dotenv';
-import { BotConfig, AutoDriveConfig, ChromaConfig } from '../types/index';
+import { BotConfig, PdpConfig as PdpConfig, ChromaConfig } from '../types/index';
 import { ModelConfig, ModelType, ModuleConfig } from '../types/model';
 
 // Load environment variables
@@ -49,8 +49,9 @@ if (!botConfig.telegram && !botConfig.discord) {
     throw new Error('At least one bot token must be provided (TELEGRAM_BOT_TOKEN or DISCORD_BOT_TOKEN)');
 }
 
-export const autoDriveConfig: AutoDriveConfig = {
-    apiKey: process.env.AUTO_DRIVE_API_KEY || '',
+export const pdpConfig: PdpConfig = {
+    url: process.env.PDP_URL || 'https://caliberation-pdp.infrafolio.com',
+    token: process.env.PDP_TOKEN || undefined,
 };
 
 export const modelConfig: ModuleConfig = {
@@ -72,8 +73,8 @@ export const chromaConfig: ChromaConfig = {
     url: process.env.CHROMA_URL || 'http://localhost:8000'
 };
 
-if (!autoDriveConfig.apiKey) {
-    throw new Error('AUTO_DRIVE_API_KEY is required');
+if (!pdpConfig.token) {
+    throw new Error('PDP_TOKEN is required');
 }
 
 Object.entries(modelConfig).forEach(([module, config]) => {

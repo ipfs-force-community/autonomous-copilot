@@ -1,7 +1,7 @@
 import { Low } from 'lowdb';
 import { JSONFile } from 'lowdb/node';
 import { Store, Cache, Note, NoteMeta, NoteMetaWithCid, UserId } from '../types/index';
-import { AutoDriveService } from './auto_drive';
+import { PdpService } from './pdp';
 import { ChromaService } from './chroma';
 import path from 'path';
 import fs from 'fs';
@@ -48,7 +48,7 @@ async function asyncPool<T, R>(
 
 export class StoreService {
     private static instance: StoreService;
-    private autoDriveService: AutoDriveService;
+    private persistService: PdpService;
     private embeddingService: EmbeddingService;
     private chromaService: ChromaService;
     private db: Low<Data>;
@@ -62,7 +62,7 @@ export class StoreService {
      * Initializes required services and ensures data directory exists
      */
     private constructor() {
-        this.autoDriveService = AutoDriveService.getInstance();
+        this.persistService = PdpService.getInstance();
         this.embeddingService = EmbeddingService.getInstance(modelConfig.embedding.type, modelConfig.embedding.config);
         this.chromaService = ChromaService.getInstance();
 
@@ -112,7 +112,7 @@ export class StoreService {
     /**
      * Update the note cache for a specific user
      * @param userId Telegram user ID
-     * @param cid Content identifier from auto drive
+     * @param cid Content identifier
      * @param note Note data containing content and optional title
      */
     private updateCache(userId: UserId, cid: string, note: Note): void {
@@ -145,7 +145,7 @@ export class StoreService {
     /**
      * Retrieve a note from cache or storage
      * @param userId Telegram user ID
-     * @param cid Content identifier from auto drive
+     * @param cid Content identifier
      * @returns Note object if found, null otherwise
      */
     private async getNoteWithCache(userId: UserId, cid: string): Promise<Note | null> {
@@ -160,7 +160,7 @@ export class StoreService {
 
         // If not in cache or expired, fetch from storage
         try {
-            const data = await this.autoDriveService.get(cid);
+            const data = await this.persistService.get(cid);
             if (data) {
                 let note: Note = JSON.parse(data);
                 this.updateCache(userId, cid, note);
@@ -182,7 +182,7 @@ export class StoreService {
      */
     public async addNote(userId: UserId, note: Note): Promise<string | null> {
         try {
-            const cid = await this.autoDriveService.put(JSON.stringify(note));
+            const cid = await this.persistService.put(JSON.stringify(note));
             if (!cid) return null;
 
             await this.db.read();
@@ -215,7 +215,7 @@ export class StoreService {
     /**
      * Retrieve a specific note by its content identifier
      * @param userId Telegram user ID
-     * @param cid Content identifier from auto drive
+     * @param cid Content identifier
      * @returns Note object if found, null otherwise
      */
     public async getNote(userId: UserId, cid: string): Promise<Note | null> {
@@ -225,7 +225,7 @@ export class StoreService {
 
     /**
      * Retrieve all notes for a specific user
-     * Uses asyncPool to limit concurrent requests to auto drive
+     * Uses asyncPool to limit concurrent requests to the persistence layer
      * @param userId Telegram user ID
      * @returns Array of Note objects
      */
