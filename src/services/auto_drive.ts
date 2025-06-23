@@ -1,5 +1,6 @@
 import { createAutoDriveApi, uploadFile, downloadFile } from '@autonomys/auto-drive';
 import { autoDriveConfig } from '../config/index';
+import { randomUUID } from 'node:crypto';
 
 /**
  * Service for interacting with auto-drive storage system
@@ -31,12 +32,12 @@ export class AutoDriveService {
     /**
      * Upload text content as a file to auto-drive
      * @param content Text content to upload
-     * @param path Virtual file path in auto-drive
      * @returns CID of the uploaded file
      * @throws Error if upload fails
      */
-    public async uploadText(content: string, path: string): Promise<string> {
+    public async put(content: string, meta?: { path: string }): Promise<string> {
         const buffer = Buffer.from(content, 'utf-8');
+        const path = meta?.path || randomUUID() + '.txt';
         const file = {
             read: async function* () {
                 yield buffer;
@@ -67,7 +68,7 @@ export class AutoDriveService {
      * @returns Text content of the file
      * @throws Error if download fails or content cannot be decoded
      */
-    public async downloadText(cid: string): Promise<string> {
+    public async get(cid: string): Promise<string> {
         try {
             const stream = await downloadFile(this.api, cid);
             let file = Buffer.alloc(0);
@@ -82,23 +83,4 @@ export class AutoDriveService {
             throw new Error('Failed to download text from auto-drive');
         }
     }
-}
-
-/**
- * Example function demonstrating text upload to auto-drive
- */
-async function example_upload() {
-    const autoDriveService = AutoDriveService.getInstance();
-    const cid = await autoDriveService.uploadText("Hello, World!", "example.txt");
-    console.log(`The file is uploaded and its cid is ${cid}`);
-}
-
-/**
- * Example function demonstrating text download from auto-drive
- */
-async function example_download() {
-    const autoDriveService = AutoDriveService.getInstance();
-    const cid = '..'
-    const text = await autoDriveService.downloadText(cid);
-    console.log('Text downloaded successfully:', text);
 }

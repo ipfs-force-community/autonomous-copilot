@@ -160,7 +160,7 @@ export class StoreService {
 
         // If not in cache or expired, fetch from storage
         try {
-            const data = await this.autoDriveService.downloadText(cid);
+            const data = await this.autoDriveService.get(cid);
             if (data) {
                 let note: Note = JSON.parse(data);
                 this.updateCache(userId, cid, note);
@@ -182,12 +182,12 @@ export class StoreService {
      */
     public async addNote(userId: UserId, note: Note): Promise<string | null> {
         try {
-            const cid = await this.autoDriveService.uploadText(JSON.stringify(note), `${note.title}.json`);
+            const cid = await this.autoDriveService.put(JSON.stringify(note));
             if (!cid) return null;
 
             await this.db.read();
             if (!this.db.data!.store[userId]) {
-                this.db.data!.store[userId] = { };
+                this.db.data!.store[userId] = {};
             }
 
             // Store NoteMeta
@@ -196,7 +196,7 @@ export class StoreService {
                 tags: note.tags,
                 createdAt: note.createdAt
             };
-            
+
             this.db.data!.store[userId][cid] = noteMeta;
             await this.db.write();
 
